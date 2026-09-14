@@ -1,0 +1,42 @@
+# Help & support. Its rows place calls and open WhatsApp — none is tapped.
+schema_version: 2
+module: more
+flow: help
+title: Help & support
+description: The Help & support screen reached from its row on More.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /more
+  - /help
+
+steps:
+  - id: 010-more
+    action: goto
+    value: /more
+    label: More
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: 'role=button[name=/^Help & support/]'
+
+  - id: 020-open-help
+    action: click
+    selector: 'role=button[name=/^Help & support/]'
+    label: Help & support
+    expect_screen: help
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      url_contains: /help
+
+  - id: 030-back
+    action: click
+    selector: '[data-testid="screen-back"]'
+    label: Back to More
+    expect_screen: more
+    screenshot: false
+    settle_ms: 1000

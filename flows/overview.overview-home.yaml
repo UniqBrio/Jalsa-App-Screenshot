@@ -1,0 +1,116 @@
+# Overview — the super admin's landing screen: the three filters, the
+# member/course/follow-up facts, and the three attendance sections.
+schema_version: 2
+module: overview
+flow: overview-home
+title: Overview (dashboard)
+description: The Overview dashboard, each of its three filter panels opened and closed, and its three attendance sections.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 600
+
+depends_on_routes:
+  - /
+  - /weekly
+
+steps:
+  - id: 010-overview
+    action: goto
+    value: /
+    label: Overview as it loads
+    expect_screen: overview
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="home-sections"]'
+
+  # ── The three filters. Each opens an anchored panel; the dismiss control is
+  #    the press beside it. Opening a filter changes nothing — choosing does,
+  #    and nothing here chooses.
+  - id: 020-open-period
+    action: click
+    selector: '[data-testid="home-filter-period"]'
+    label: The Period filter — presets and a custom range
+    expect_screen: overview-period-filter
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="home-period-this-week"]'
+
+  - id: 025-close-period
+    action: click
+    selector: '[data-testid="home-filter-dismiss"]'
+    label: Close the Period filter
+    screenshot: false
+
+  - id: 030-open-course
+    action: click
+    selector: '[data-testid="home-filter-course"]'
+    label: The Course filter — every course, tick to narrow
+    expect_screen: overview-course-filter
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="home-course-all"]'
+
+  - id: 035-close-course
+    action: click
+    selector: '[data-testid="home-filter-dismiss"]'
+    label: Close the Course filter
+    screenshot: false
+
+  - id: 040-open-branch
+    action: click
+    selector: '[data-testid="home-filter-branch"]'
+    label: The Branch filter
+    expect_screen: overview-branch-filter
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="home-branch-all"]'
+
+  - id: 045-close-branch
+    action: click
+    selector: '[data-testid="home-filter-dismiss"]'
+    label: Close the Branch filter
+    screenshot: false
+
+  # ── The three sections, scrolled into view one at a time.
+  - id: 050-by-member
+    action: scrollUntilVisible
+    selector: '[data-testid="home-by-member"]'
+    label: Based on member — attendance bars
+    expect_screen: overview-by-member
+    screenshot: viewport
+    optional: true
+
+  - id: 060-by-course
+    action: scrollUntilVisible
+    selector: '[data-testid="home-by-course"]'
+    label: Based on course — attendance rings
+    expect_screen: overview-by-course
+    screenshot: viewport
+    optional: true
+
+  - id: 070-by-period
+    action: scrollUntilVisible
+    selector: '[data-testid="home-by-period"]'
+    label: Based on period
+    expect_screen: overview-by-period
+    screenshot: viewport
+    optional: true
+
+  # The "Need follow-up" fact is a link into the weekly review.
+  - id: 080-need-follow-up
+    action: scrollUntilVisible
+    selector: '[data-testid="home-flagged"]'
+    label: Back to the top — the Need follow-up fact
+    screenshot: false
+
+  - id: 090-open-weekly
+    action: click
+    selector: '[data-testid="home-flagged"]'
+    label: Tap Need follow-up — the weekly review
+    expect_screen: weekly-review
+    screenshot: viewport
+    settle_ms: 1500
+    assert:
+      url_contains: /weekly

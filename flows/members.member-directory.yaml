@@ -1,0 +1,79 @@
+# The member directory, reached the way the app reaches it — from a course
+# card's roster chevron — then widened to every member.
+schema_version: 2
+module: members
+flow: member-directory
+title: Members (directory and search)
+description: A course roster from the course card, widened to every member, searched, and the Add member form opened and closed.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /courses
+  - /members
+  - /member/edit
+
+steps:
+  - id: 010-courses
+    action: goto
+    value: /courses
+    label: The course list
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid^="courses-roster-"]'
+
+  - id: 020-course-roster
+    action: click
+    selector: '[data-testid^="courses-roster-"]'
+    label: The roster of the first course
+    expect_screen: members-scoped
+    screenshot: full
+    settle_ms: 1800
+    assert:
+      url_contains: /members
+
+  - id: 030-show-all
+    action: click
+    selector: '[data-testid="members-show-all"]'
+    label: Every member in the academy
+    expect_screen: members-all
+    screenshot: full
+    settle_ms: 1500
+    optional: true
+
+  - id: 040-search
+    action: type
+    selector: 'role=textbox[name="Search members"]'
+    value: a
+    run_tag: false
+    label: Search by name, email or Meet alias
+    expect_screen: members-searched
+    screenshot: viewport
+
+  - id: 045-clear-search
+    action: press
+    selector: 'role=textbox[name="Search members"]'
+    value: Backspace
+    label: Clear the search
+    screenshot: false
+
+  - id: 050-add-member-form
+    action: click
+    selector: 'role=button[name="Add"]'
+    label: Add — the member form (never saved)
+    expect_screen: member-form
+    screenshot: full
+    settle_ms: 1200
+    assert:
+      selector_visible: '[data-testid="member-close"]'
+
+  - id: 060-close-form
+    action: click
+    selector: '[data-testid="member-close"]'
+    label: Close without saving
+    expect_screen: members-all
+    screenshot: false
+    settle_ms: 800

@@ -1,0 +1,71 @@
+# Send communication — the recipient picker, searched and cancelled.
+# send-trigger is NEVER pressed: pressing it emails real members.
+schema_version: 2
+module: send
+flow: send-communication
+title: Send communication (picker only)
+description: The Send communication dialog from a course, its recipient search, and Cancel. Nothing is sent.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /courses
+  - /course/[id]
+  - /send
+
+steps:
+  - id: 010-courses
+    action: goto
+    value: /courses
+    label: The course list
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid^="courses-open-"]'
+
+  - id: 020-open-course
+    action: click
+    selector: '[data-testid^="courses-open-"]'
+    label: Open the first course
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="course-send"]'
+
+  - id: 030-send-dialog
+    action: click
+    selector: '[data-testid="course-send"]'
+    label: Send Communication — the recipient picker
+    expect_screen: send-picker
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      url_contains: /send
+      selector_visible: '[data-testid="send-cancel"]'
+
+  - id: 040-search
+    action: type
+    selector: '[data-testid="send-search"]'
+    value: a
+    run_tag: false
+    label: Search recipients
+    expect_screen: send-picker-searched
+    screenshot: viewport
+    optional: true
+
+  - id: 045-clear-search
+    action: click
+    selector: '[data-testid="send-search-clear"]'
+    label: Clear the search
+    screenshot: false
+    optional: true
+
+  - id: 050-cancel
+    action: click
+    selector: '[data-testid="send-cancel"]'
+    label: Cancel — nothing sent
+    expect_screen: course-detail
+    screenshot: false
+    settle_ms: 1000

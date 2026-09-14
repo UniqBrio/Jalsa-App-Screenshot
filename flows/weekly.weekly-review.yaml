@@ -1,0 +1,42 @@
+# The weekly review — who needs following up this week.
+schema_version: 2
+module: weekly
+flow: weekly-review
+title: Weekly review
+description: The weekly follow-up list, and one flagged member opened from it.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /weekly
+  - /member/[id]
+
+steps:
+  - id: 010-weekly
+    action: goto
+    value: /weekly?from=/
+    label: The weekly review
+    expect_screen: weekly-review
+    screenshot: full
+    settle_ms: 1800
+    assert:
+      selector_visible: '[data-testid="shell-academy"]'
+
+  # Only present when somebody is flagged this week — hence optional.
+  - id: 020-open-member
+    action: click
+    selector: 'role=button[name=/ expected, /]'
+    label: A flagged member
+    expect_screen: member-this-week
+    screenshot: viewport
+    settle_ms: 1500
+    optional: true
+
+  - id: 030-close-member
+    action: click
+    selector: '[data-testid="member-close"]'
+    label: Close the member
+    screenshot: false
+    optional: true

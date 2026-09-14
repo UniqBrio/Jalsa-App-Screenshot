@@ -1,0 +1,64 @@
+# Your profile, from the account card on More — and the Change PIN screen it
+# links to, captured EMPTY: nothing is ever typed into a PIN field here.
+schema_version: 2
+module: more
+flow: profile
+title: Your profile and Change PIN
+description: Open the profile from the More account card, then the Change My PIN screen (left empty), and return.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /more
+  - /profile
+  - /set-pin
+
+steps:
+  - id: 010-more
+    action: goto
+    value: /more
+    label: More
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: 'role=button[name=/Open your profile/]'
+
+  - id: 020-open-profile
+    action: click
+    selector: 'role=button[name=/Open your profile/]'
+    label: Your profile
+    expect_screen: profile
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      url_contains: /profile
+      selector_visible: 'role=button[name="Change My PIN"]'
+
+  - id: 030-change-pin-screen
+    action: click
+    selector: 'role=button[name="Change My PIN"]'
+    label: Change My PIN — the empty PIN screen (nothing entered)
+    expect_screen: set-pin-empty
+    screenshot: viewport
+    settle_ms: 1200
+    assert:
+      url_contains: /set-pin
+      selector_visible: '[data-testid="setpin-keypad"]'
+
+  - id: 040-back-to-profile
+    action: goBack
+    label: Back to the profile
+    expect_screen: profile
+    screenshot: false
+    settle_ms: 1000
+
+  - id: 050-back-to-more
+    action: click
+    selector: '[data-testid="screen-back"]'
+    label: Back to More
+    expect_screen: more
+    screenshot: false
+    settle_ms: 1000
+    optional: true

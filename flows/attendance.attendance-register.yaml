@@ -1,0 +1,85 @@
+# The attendance records list — every uploaded row, with its four filters.
+schema_version: 2
+module: attendance
+flow: attendance-register
+title: Attendance records
+description: The attendance records screen and each of its four filter panels opened and closed.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 600
+
+depends_on_routes:
+  - /attendance
+
+steps:
+  - id: 010-attendance
+    action: goto
+    value: /attendance?from=/courses
+    label: Attendance records
+    expect_screen: attendance-records
+    screenshot: full
+    settle_ms: 1800
+    assert:
+      selector_visible: '[data-testid="attendance-filter-period"]'
+
+  - id: 020-open-branch
+    action: click
+    selector: '[data-testid="attendance-filter-branch"]'
+    label: The Branch filter
+    expect_screen: attendance-branch-filter
+    screenshot: viewport
+
+  - id: 025-close-branch
+    action: click
+    selector: '[data-testid="attendance-filter-dismiss"]'
+    label: Close
+    screenshot: false
+
+  - id: 030-open-course
+    action: click
+    selector: '[data-testid="attendance-filter-course"]'
+    label: The Course filter
+    expect_screen: attendance-course-filter
+    screenshot: viewport
+
+  - id: 035-close-course
+    action: click
+    selector: '[data-testid="attendance-filter-dismiss"]'
+    label: Close
+    screenshot: false
+
+  - id: 040-open-status
+    action: click
+    selector: '[data-testid="attendance-filter-status"]'
+    label: The Status filter
+    expect_screen: attendance-status-filter
+    screenshot: viewport
+
+  - id: 045-close-status
+    action: click
+    selector: '[data-testid="attendance-filter-dismiss"]'
+    label: Close
+    screenshot: false
+
+  - id: 050-open-period
+    action: click
+    selector: '[data-testid="attendance-filter-period"]'
+    label: The Period filter
+    expect_screen: attendance-period-filter
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="attendance-period-this-week"]'
+
+  - id: 055-close-period
+    action: click
+    selector: '[data-testid="attendance-filter-dismiss"]'
+    label: Close
+    screenshot: false
+
+  - id: 060-scroll-records
+    action: scrollTo
+    position: bottom
+    label: The end of the list
+    expect_screen: attendance-records-end
+    screenshot: viewport

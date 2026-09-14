@@ -1,0 +1,233 @@
+{
+  "$comment": "DOM fingerprint baseline. Populated on the first capture run. Do not hand-edit — use `npm run baseline:accept` after reviewing changed screenshots.",
+  "attendance/attendance-register/010-attendance": {
+    "dom_hash": "sha256:551c1cf774d2eafd962a2489f9ea4ef80a6160cdbb525f0aaa4509d4c2db274e",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/attendance-register/020-open-branch": {
+    "dom_hash": "sha256:23f9d5a810ed68e7ab096e57a18e61e53ebb7a51a6cae6d0bc1cdfdca402b453",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/attendance-register/030-open-course": {
+    "dom_hash": "sha256:29c0fa057a2e2e386bde29c41807d8a1300c34454c975809b459894c2c273454",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/course-detail/020-open-course": {
+    "dom_hash": "sha256:009b5223affc23517cbcd1777cf387534228bb567b58f172c20ee826a70e9f2a",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/course-detail/030-previous-week": {
+    "dom_hash": "sha256:3847b8113f8ec918e9839c981125f4c52aae5d88c4eaec002bc07814ef7ec9df",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/course-detail/050-select-day": {
+    "dom_hash": "sha256:89d9153da62db834cc87bdb845f6fe5162e204d24e07e59e890074f2fb5276e7",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/course-detail/070-open-show": {
+    "dom_hash": "sha256:818fd654f4ee8b318b6f49e95d6742ed4e3f75c735a372aa27406576e5a7db3c",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/course-detail/080-search-roster": {
+    "dom_hash": "sha256:e211e6308437425c0bfac2a25ba2de27f96fc83671c866355c7c23a40d6e7d5b",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/course-detail/090-open-member": {
+    "dom_hash": "sha256:705fe3096c8f467e5295ef0c3b8f0d0cb02d2645d7d034d9106d0d5b2420e006",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/courses-workspace/020-attendance-tab": {
+    "dom_hash": "sha256:c5da0f3cf9a4599f7afb451391fc5d02027e373ffd803a48d1d623606be2dde1",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/courses-workspace/030-add-course-form": {
+    "dom_hash": "sha256:d8f86df7816db0987d0575c1df3d7d3879b7ba158da041832586492503a9b9ad",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/courses-workspace/050-edit-course-form": {
+    "dom_hash": "sha256:936595d35f398ada0709796f30a38193a2d5d1d81f1a6df20a6c249a59708627",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "attendance/courses-workspace/070-add-member-form": {
+    "dom_hash": "sha256:cc12bb75d4f82977b7f29fbec8e42716c9d171b2364487e5158891dea0024a47",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "audit/audit-log/020-open-audit": {
+    "dom_hash": "sha256:eedbdf7faae4034a770b3427545d9ac629b68eb9a2073a1d7f8b79287f7fd54d",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "audit/audit-log/030-open-period": {
+    "dom_hash": "sha256:c44f43d97c153240b1d3a2e7370b2f93c8d643e7bfc83b9b8eba6ad4e22f3aaa",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "audit/audit-log/040-open-branch": {
+    "dom_hash": "sha256:1d887afcddd9f6615b083c101626356c6473cafd5f1b9b16f3dcfe421a96a789",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "audit/audit-log/050-scroll": {
+    "dom_hash": "sha256:1d887afcddd9f6615b083c101626356c6473cafd5f1b9b16f3dcfe421a96a789",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "members/member-directory/020-course-roster": {
+    "dom_hash": "sha256:1f0c304dd177c49876237fa2af3cd663864b407d25a96f75b74e587cfeb0e4f4",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "members/member-directory/030-show-all": {
+    "dom_hash": "sha256:89f0b98cfb1e9fe66869de391f892abd2630019338fc237f689e44547c5d94a6",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "members/member-directory/040-search": {
+    "dom_hash": "sha256:cfe819ae1eee6c3e8d1677e5f83c79d21d21725942b2b943ebdbd9e92ed77e0f",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "members/member-directory/050-add-member-form": {
+    "dom_hash": "sha256:03646b35b1f26c676d50678ba84384f4e78d04b923c4551d0cbd81a970aa7948",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "more/appearance/020-open-appearance": {
+    "dom_hash": "sha256:c087efdf011bc4c19edd5868fd7a4bf9ec1d65e8c2e75496616fe6afaf88dbb3",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "more/branches/020-open-branches": {
+    "dom_hash": "sha256:5189d7e90ee992dd598ca0d1091e1a2a280decfe9c263ef49ce2e4f01b3be927",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "more/help/020-open-help": {
+    "dom_hash": "sha256:e0fe9ffb7a519770d33a68557aba3bf238b81cdff6e9be41588b51365b957c14",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "more/more-menu/020-more-tab": {
+    "dom_hash": "sha256:2f085a0ad834d878906a5e6c2c200eb2c15ffaa5f7ada315a53968d0d01faa82",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "more/profile/020-open-profile": {
+    "dom_hash": "sha256:b9f7a7930faaa06a3b34b8a95f93946dc60c2fef5307d26239088cc6e44a4f32",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "more/profile/030-change-pin-screen": {
+    "dom_hash": "sha256:b9dff1a036c4e8d31b4f7fbfe193c62c39965b5e03fc3ac92e3a6ebb7dd92853",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "notifications/notification-panel/020-open-notifications": {
+    "dom_hash": "sha256:d34964e6f0d09ef06f2b911c6c1717aec7bf1c52099d30c736f2010d0db4cd2d",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "overview/overview-home/010-overview": {
+    "dom_hash": "sha256:f4d1c87545617ed0bf04e618ba98c37c9edf35f7e7a2e654416c4ea2e5c0602a",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "overview/overview-home/020-open-period": {
+    "dom_hash": "sha256:dcab2ab292b7e02e0a9ba3689846a40df6ecb7b2258a7032a80c063f937f5175",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "reports/reports-overview/010-reports": {
+    "dom_hash": "sha256:7f8813ea9bcc1c7805a8c199918a58075479ed2f26e37cbb2429bf1a1b527003",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "reports/reports-overview/020-open-period": {
+    "dom_hash": "sha256:4910229f3078cf4cc7045a64a28ea26a0395663e5a469ec4ec7a8f26e3a2762e",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "send/send-communication/030-send-dialog": {
+    "dom_hash": "sha256:b1dc31dbf68e50b2bb386e075f2ac9facbb1c0b47be6094651a8db61fd950014",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/forgot-pin/050-change-number": {
+    "dom_hash": "sha256:cecacdb3b349683569de4ce0e291d605840ea1209903839e93f7559bea4fc379",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/forgot-pin/070-forgot-pin": {
+    "dom_hash": "sha256:7de7c7dcce516ec250b65badfbe499fe5d91132e7eb0a05caad08bede103b1cd",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/forgot-pin/080-back-to-sign-in": {
+    "dom_hash": "sha256:cecacdb3b349683569de4ce0e291d605840ea1209903839e93f7559bea4fc379",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/sign-in-journey/010-sign-in-screen": {
+    "dom_hash": "sha256:cecacdb3b349683569de4ce0e291d605840ea1209903839e93f7559bea4fc379",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/sign-in-journey/020-partial-number": {
+    "dom_hash": "sha256:cecacdb3b349683569de4ce0e291d605840ea1209903839e93f7559bea4fc379",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/sign-in-journey/030-full-number": {
+    "dom_hash": "sha256:cecacdb3b349683569de4ce0e291d605840ea1209903839e93f7559bea4fc379",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/sign-in-journey/050-pin-screen": {
+    "dom_hash": "sha256:e759b9eb01b4aa5797382d88e67b4b4e79c328b3968a82ed797b6ab216b79c05",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "signin/sign-in-journey/070-overview": {
+    "dom_hash": "sha256:f4d1c87545617ed0bf04e618ba98c37c9edf35f7e7a2e654416c4ea2e5c0602a",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "staff/staff-access/020-open-staff": {
+    "dom_hash": "sha256:9cc58c1f2260054b06ef8d60b0fa068afb7177eb21e2c7a1a407218564599707",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "staff/staff-access/030-add-staff-form": {
+    "dom_hash": "sha256:930cdfdbcfc2bd34507cfaf0c2cd24e9df5453a63a1f775f011527133a279c70",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "upload/upload-attendance/030-upload-dialog": {
+    "dom_hash": "sha256:88cae31b8ed35f91f429ec9c0f76717bb1e0c867964cf88e9ed37c20fefa281d",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "weekly/weekly-review/010-weekly": {
+    "dom_hash": "sha256:0c2780763efd947a905f1c1a88ab0e41bcb2058e3fc8f3568a79d6a714a5b297",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  },
+  "weekly/weekly-review/020-open-member": {
+    "dom_hash": "sha256:55a631fe44496f39363e2d3b0e01dff4d3c290b5a270046c2bdfac14c9b23334",
+    "masked_selectors": [],
+    "last_updated": "2026-09-13"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "rosifit-app-screenshot-capture",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deterministic, read-only Playwright capture of every screen/state in the RosiFit PWA (rosi-fit.vercel.app), with git-diff + DOM-fingerprint change detection, nav discovery and doc generation. No cleanup module: nothing is ever written.",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "validate": "ts-node src/validate.ts",
+    "capture": "ts-node src/runner.ts",
+    "capture:all": "ts-node src/runner.ts --force",
+    "capture:module": "ts-node src/runner.ts --module",
+    "capture:dry": "ts-node src/runner.ts --dry-run",
+    "discover": "ts-node src/discovery.ts",
+    "docs": "ts-node src/doc-generator.ts",
+    "prune": "ts-node src/prune-runs.ts",
+    "baseline:accept": "ts-node src/accept-baseline.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node -r ts-node/register --test src/__tests__/glob.test.ts src/__tests__/fingerprint.test.ts src/__tests__/flow-loader.test.ts src/__tests__/flow-schema.test.ts src/__tests__/record-convert.test.ts",
+    "postinstall": "playwright install chromium",
+    "record": "ts-node src/recorder.ts",
+    "record:convert": "ts-node src/record-convert.ts",
+    "record:diff": "ts-node src/record-diff.ts"
+  },
+  "dependencies": {
+    "@playwright/test": "1.62.1",
+    "dotenv": "16.6.1",
+    "js-yaml": "4.3.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "22.20.1",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3"
+  }
+}

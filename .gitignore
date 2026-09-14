@@ -1,0 +1,33 @@
+# secrets
+.env
+.env.local
+*.key
+
+# auth state — contains a live session token for a REAL RosiFit account
+.auth/
+storage-state.json
+
+# throwaway recon (src/_recon.ts) and its output — regenerate, never commit
+src/_recon.ts
+.recon/
+
+# throwaway environment probe (Phase 1 investigation) — regenerate, never commit
+src/_env-probe.ts
+
+# node
+node_modules/
+dist/
+npm-debug.log*
+*.tsbuildinfo
+
+# playwright
+playwright-report/
+test-results/
+blob-report/
+
+# os
+Thumbs.db
+.DS_Store
+
+# NOTE: screenshots/, runs/, fingerprints/ and docs/ are INTENTIONALLY tracked.
+# They are the product of this project — the daily commit diff is the signal.

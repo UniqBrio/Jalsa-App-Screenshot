@@ -1,0 +1,115 @@
+# The sign-in journey — every state between a cold visit and the Overview,
+# captured as a signed-OUT visitor sees it.
+#
+# auth: none — the runner gives this flow a FRESH browser context (no saved
+# session), so '/' shows the number field instead of resuming into the shell.
+# The PIN is typed from {{SIGNIN_PIN}}; the executor redacts it from run
+# manifests and logs (src/env.ts redactSecrets), so it never reaches git.
+#
+# READ-ONLY: signing in is the one thing this flow does to the account. It
+# never presses "Forgot PIN?" (see signin/forgot-pin) and never registers.
+schema_version: 2
+module: signin
+flow: sign-in-journey
+title: Sign in (mobile number → PIN → Overview)
+description: A signed-out visitor enters the mobile number, then the 4-digit PIN, and lands on Overview.
+scenario_class: happy
+auth: none
+audience: academy owner
+settle_ms: 500
+
+depends_on_routes:
+  - /
+
+vars:
+  # A deliberately incomplete number, to capture Continue in its disabled state.
+  PARTIAL_MOBILE: "91481"
+
+steps:
+  # The prerendered first paint is the "Checking if you are already signed in…"
+  # sheet; the number field replaces it once the server says nobody is.
+  - id: 010-sign-in-screen
+    action: goto
+    value: /
+    label: The sign-in screen
+    expect_screen: sign-in
+    screenshot: viewport
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="signin-phone"]'
+
+  - id: 020-partial-number
+    action: type
+    selector: '[data-testid="signin-phone"]'
+    value: "{{PARTIAL_MOBILE}}"
+    run_tag: false
+    label: An incomplete number — Continue stays disabled
+    expect_screen: sign-in-partial-number
+    screenshot: viewport
+
+  # Continue only arms on ten local digits. RN-web marks a disabled Pressable
+  # with aria-disabled, which is what Playwright's disabled check reads; kept
+  # optional so a change in how the app expresses "disabled" cannot fail the
+  # whole journey.
+  - id: 025-continue-disabled
+    action: expect
+    selector: '[data-testid="signin-continue"]'
+    expect: disabled
+    label: Continue is disabled until the number is complete
+    screenshot: false
+    optional: true
+
+  - id: 030-full-number
+    action: type
+    selector: '[data-testid="signin-phone"]'
+    value: "{{SIGNIN_MOBILE}}"
+    run_tag: false
+    label: The full mobile number entered
+    expect_screen: sign-in-number-entered
+    screenshot: viewport
+
+  # Continue asks the server whether the number has an account. A registered
+  # number moves to the PIN step; the flow asserts that, because an unknown
+  # number is sent to /register — a screen this project must never fill in.
+  - id: 040-continue
+    action: click
+    selector: '[data-testid="signin-continue"]'
+    label: Continue
+    screenshot: false
+    settle_ms: 800
+
+  - id: 050-pin-screen
+    action: waitFor
+    selector: '[data-testid="signin-pin"]'
+    state: visible
+    label: The PIN screen — four empty dots and the keypad
+    expect_screen: sign-in-pin
+    screenshot: viewport
+    settle_ms: 600
+    assert:
+      selector_visible: '[data-testid="signin-keypad"]'
+
+  # One hidden 4-digit field sits over the dots and submits itself on the
+  # fourth digit — there is no Verify button. Typed rather than tapped on the
+  # keypad so the PIN is ONE value the executor can redact, not four selectors.
+  - id: 060-enter-pin
+    action: type
+    selector: '[data-testid="signin-pin"]'
+    value: "{{SIGNIN_PIN}}"
+    run_tag: false
+    label: PIN entered — the app signs in on the fourth digit
+    screenshot: false
+    settle_ms: 2500
+
+  # The academy header only exists inside the shell, so its presence IS the
+  # sign-in succeeding. The super admin lands on Overview.
+  - id: 070-overview
+    action: waitFor
+    selector: '[data-testid="shell-academy"]'
+    state: visible
+    label: Signed in — Overview
+    expect_screen: overview
+    screenshot: viewport
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="nav-tab-overview"]'

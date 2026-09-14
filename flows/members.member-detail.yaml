@@ -1,0 +1,101 @@
+# One member's dialog: both tabs, and the Reach out picker opened and
+# cancelled. send-trigger is never pressed — nothing is sent.
+schema_version: 2
+module: members
+flow: member-detail
+title: Member detail (This week · Details · Reach out)
+description: Open the first member from the directory, view both tabs, open Reach out and cancel it.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /members
+  - /member/[id]
+  - /send
+
+steps:
+  - id: 010-members
+    action: goto
+    value: /members?from=/courses
+    label: The member directory
+    screenshot: false
+    settle_ms: 1800
+    assert:
+      selector_visible: 'role=button[name=/ expected, /]'
+
+  # A member row's accessible name is one sentence: "<name>, <course>,
+  # <branch>. N expected, M attended, …". The first row is opened.
+  - id: 020-open-member
+    action: click
+    selector: 'role=button[name=/ expected, /]'
+    label: The member — This week
+    expect_screen: member-this-week
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      url_contains: /member/
+      selector_visible: '[data-testid="member-tab-details"]'
+
+  - id: 030-details-tab
+    action: click
+    selector: '[data-testid="member-tab-details"]'
+    label: The Details tab
+    expect_screen: member-details
+    screenshot: full
+    settle_ms: 800
+    assert:
+      selector_visible: '[data-testid="member-details"]'
+
+  - id: 040-week-tab
+    action: click
+    selector: '[data-testid="member-tab-week"]'
+    label: Back to This week
+    screenshot: false
+
+  - id: 050-reach-out
+    action: click
+    selector: '[data-testid="member-reach-out"]'
+    label: Reach out — the send screen for this member (never sent)
+    expect_screen: send-for-member
+    screenshot: full
+    settle_ms: 1500
+    optional: true
+    assert:
+      selector_visible: '[data-testid="send-cancel"]'
+
+  - id: 055-cancel-send
+    action: click
+    selector: '[data-testid="send-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    settle_ms: 800
+
+  - id: 060-edit-form
+    action: click
+    selector: '[data-testid="member-edit"]'
+    label: Edit — the member form filled in (never saved)
+    expect_screen: member-form-filled
+    screenshot: full
+    settle_ms: 1200
+    optional: true
+    assert:
+      selector_visible: '[data-testid="member-cancel"]'
+
+  - id: 065-cancel-edit
+    action: click
+    selector: '[data-testid="member-cancel"]'
+    label: Cancel without saving
+    screenshot: false
+    optional: true
+    settle_ms: 800
+
+  - id: 070-close-member
+    action: click
+    selector: '[data-testid="member-close"]'
+    label: Close the member
+    expect_screen: members-all
+    screenshot: false
+    optional: true
