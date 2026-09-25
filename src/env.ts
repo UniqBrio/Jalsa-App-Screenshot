@@ -53,6 +53,10 @@ export const paths = {
   recordings: path.join(ROOT, 'recordings'),
   fingerprints: path.join(ROOT, 'fingerprints'),
   docs: path.join(ROOT, 'docs'),
+  /** Evidence-mode output only. Gitignored: raw frames can hold personal data. */
+  evidence: path.join(ROOT, 'evidence'),
+  piiRegions: path.join(ROOT, 'config', 'pii-regions.json'),
+  devices: path.join(ROOT, 'config', 'devices.json'),
   auth: path.join(ROOT, '.auth'),
   routesMap: path.join(ROOT, 'config', 'routes.map.json'),
   knownRoutes: path.join(ROOT, 'config', 'known_routes.json'),
@@ -128,6 +132,16 @@ export const env = {
     apiKey: opt('ANTHROPIC_API_KEY'),
     model: opt('LLM_MODEL', 'claude-sonnet-5'),
   },
+
+  /**
+   * Discovery's draft proposal sends the discovered screen's page HTML and a
+   * screenshot to the LLM — and a RosiFit screen carries member names and
+   * emails. Personal data must never reach the LLM, so that call is off unless
+   * explicitly opted into, independently of ANTHROPIC_API_KEY (which the doc
+   * and manual prose paths also use). Off: discovery writes its deterministic
+   * fallback draft instead.
+   */
+  discoveryLlm: bool('DISCOVERY_LLM_SEND_PAGE_CONTENT', false),
 };
 
 /** Values available for {{VAR}} interpolation inside flow selectors/inputs. */
@@ -152,13 +166,57 @@ export function secretValues(): string[] {
   return [env.admin.pin, env.staff.pin].filter((s) => s.length >= 3);
 }
 
+export interface IdentifierValue {
+  /** The .env name, used in the redaction token. */
+  name: string;
+  /** Ten local digits. */
+  digits: string;
+}
+
+/**
+ * Operator identifiers — the mobile numbers the runner signs in with. Not
+ * secrets, but personal data about the people operating the capture, so they
+ * are held to the same rule: never written to a manifest, a log or a doc.
+ */
+export function identifierValues(): IdentifierValue[] {
+  return [
+    { name: 'SIGNIN_MOBILE', digits: env.admin.mobile },
+    { name: 'STAFF_MOBILE', digits: env.staff.mobile },
+  ].filter((v) => v.digits.length === 10);
+}
+
 const REDACTED = '«redacted»';
 
-/** Replaces every secret value in `text` with a marker. Idempotent, cheap. */
-export function redactSecrets(text: string): string {
+/**
+ * A mobile number as it can appear in text: the ten digits with any spaces or
+ * hyphens between them (the sign-in field renders "98765 43210"), optionally
+ * behind a +91 / 91 / 0 prefix.
+ */
+function identifierPattern(digits: string): RegExp {
+  const body = digits.split('').join('[\\s-]*');
+  return new RegExp(`(?:\\+?91[\\s-]*|0)?${body}`, 'g');
+}
+
+/**
+ * The redaction itself, as a pure function so it can be tested without an
+ * .env. Identifiers go FIRST: a PIN's digits can occur inside a mobile number,
+ * and splitting the PIN out first would break the number into fragments that
+ * no longer match — leaking the rest of it.
+ */
+export function redactValues(text: string, secrets: string[], identifiers: IdentifierValue[]): string {
   let out = text;
-  for (const secret of secretValues()) out = out.split(secret).join(REDACTED);
+  for (const id of identifiers) out = out.replace(identifierPattern(id.digits), `«redacted:${id.name}»`);
+  for (const secret of secrets) out = out.split(secret).join(REDACTED);
   return out;
+}
+
+/**
+ * Replaces every secret (PIN) and operator identifier (mobile number) in `text`
+ * with a marker. Idempotent, cheap. The name predates identifiers; every
+ * manifest, log and doc writer already routes through it.
+ */
+export function redactSecrets(text: string): string {
+  return redactValues(text, secretValues(), identifierValues());
 }
 
 function hostOf(url: string): string {

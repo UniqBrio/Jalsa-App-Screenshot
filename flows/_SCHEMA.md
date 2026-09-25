@@ -308,7 +308,9 @@ nothing ever carries `RUN_TAG` into the app.
 **Secrets are redacted before anything is written.** Every selector, input and
 result string that lands in a run manifest or the log passes through
 `redactSecrets()` (`src/env.ts`), which replaces the PIN values with
-`«redacted»`. That is why the sign-in journey types the PIN as ONE value from
+`«redacted»` and the sign-in mobile numbers (spaced or +91-prefixed too) with
+`«redacted:SIGNIN_MOBILE»` / `«redacted:STAFF_MOBILE»`. Log lines pass through
+the same function. That is why the sign-in journey types the PIN as ONE value from
 `{{SIGNIN_PIN}}` rather than tapping four keypad keys: one value can be
 redacted, four single-digit selectors cannot.
 

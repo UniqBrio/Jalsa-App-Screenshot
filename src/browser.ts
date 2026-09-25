@@ -2,6 +2,7 @@
 import * as fs from 'fs';
 import { chromium, devices, Browser, BrowserContext, Page } from '@playwright/test';
 import { env } from './env';
+import type { DeviceProfile } from './devices';
 
 export async function launchBrowser(opts: { headless?: boolean } = {}): Promise<Browser> {
   return chromium.launch({
@@ -11,18 +12,25 @@ export async function launchBrowser(opts: { headless?: boolean } = {}): Promise<
   });
 }
 
-export async function newContext(browser: Browser, storageStatePath?: string): Promise<BrowserContext> {
+/**
+ * A context for one device profile. Everything that decides which layout the app
+ * serves comes from the profile — viewport, density, user agent, `isMobile` and
+ * touch — because a wide window that still claims to be a phone would produce a
+ * mobile layout labelled "Laptop".
+ */
+export async function newContext(browser: Browser, storageStatePath?: string, device?: DeviceProfile): Promise<BrowserContext> {
   const useState = storageStatePath && fs.existsSync(storageStatePath) ? storageStatePath : undefined;
+  const emulated = device?.emulate ? devices[device.emulate] : undefined;
   const ctx = await browser.newContext({
     baseURL: env.appUrl,
-    viewport: { width: env.browser.width, height: env.browser.height },
+    viewport: device ? { ...device.viewport } : { width: env.browser.width, height: env.browser.height },
     storageState: useState,
-    deviceScaleFactor: env.browser.deviceScaleFactor, // crisp screenshots — these end up in documentation
-    // Mobile-first PWA: emulate a real Chrome-on-Android device so the app serves
-    // its mobile layout (meta-viewport honoured, touch events, no desktop UA).
-    userAgent: devices['Pixel 7'].userAgent,
-    isMobile: true,
-    hasTouch: true,
+    // crisp screenshots — these end up in documentation
+    deviceScaleFactor: device ? device.dpr : env.browser.deviceScaleFactor,
+    // A desktop profile keeps Chromium's own user agent; a phone/tablet borrows a real one.
+    userAgent: device ? emulated?.userAgent : devices['Pixel 7'].userAgent,
+    isMobile: device ? device.isMobile : true,
+    hasTouch: device ? device.hasTouch : true,
     locale: 'en-IN',
     timezoneId: 'Asia/Kolkata',
     reducedMotion: 'reduce', // kills animation-induced screenshot flake

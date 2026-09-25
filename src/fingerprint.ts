@@ -91,8 +91,8 @@ export async function domHash(page: Page, mask: string[] = []): Promise<string> 
   return 'sha256:' + crypto.createHash('sha256').update(normalised).digest('hex');
 }
 
-export function fingerprintKey(module: string, flow: string, stepId: string): string {
-  return `${module}/${flow}/${stepId}`;
+export function fingerprintKey(device: string, module: string, flow: string, stepId: string): string {
+  return `${device}/${module}/${flow}/${stepId}`;
 }
 
 export function loadBaseline(): Fingerprints {

@@ -23,7 +23,7 @@ depends_on_routes:
 
 vars:
   # A deliberately incomplete number, to capture Continue in its disabled state.
-  PARTIAL_MOBILE: "91481"
+  PARTIAL_MOBILE: "99999"
 
 steps:
   # The prerendered first paint is the "Checking if you are already signed in…"

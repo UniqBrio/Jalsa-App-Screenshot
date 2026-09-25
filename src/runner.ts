@@ -22,41 +22,56 @@
  *   --dry-run            plan only: no browser, no writes to the app
  *   --update-baseline    accept the current DOM as the new fingerprint baseline
  *   --headed             run with a visible browser (overrides HEADLESS)
+ *   --evidence           user-manual evidence run (npm run capture:evidence): every
+ *                        selected flow runs, all output goes to evidence/<run_id>/,
+ *                        and screenshots/, runs/, the fingerprint baseline and
+ *                        last-run state are never written or pruned
  */
 import * as path from 'path';
 import { Browser, BrowserContext } from '@playwright/test';
 import { env, paths, appHost, assertTargetEnvironment } from './env';
-import { writeJson, relPosix } from './fsx';
+import { readJson, writeJson, relPosix } from './fsx';
 import { log } from './logger';
 import { loadFlows } from './flow-loader';
 import { launchBrowser, newContext } from './browser';
+import { loadDevicesConfig, resolveDevices, devicesForFlow, type DeviceProfile } from './devices';
 import { getAuthenticatedContext, authPreflight, Identity } from './login';
 import { executeFlow } from './flow-executor';
 import { loadBaseline, saveBaseline } from './fingerprint';
 import { ChangeDetector, inspectAppRepo, loadLastRun, saveLastRun } from './change-detector';
 import { pruneRuns } from './prune-runs';
-import type { Flow, FlowRun, RunSummary } from './types';
+import { EvidenceSink, evidenceDirInUse } from './manual/evidence-capture';
+import { loadPiiConfig } from './manual/pii-config';
+import { evidenceRoutes } from './manual/evidence-sanitize';
+import type { Flow, FlowRun, KnownRoutes, RunSummary } from './types';
 
 interface Args {
   force: boolean;
   dryRun: boolean;
   updateBaseline: boolean;
   headed: boolean;
+  evidence: boolean;
   modules: string[];
   flows: string[];
+  /** --device <id>, repeatable. Empty means "ask, or fall back to the configured default". */
+  devices: string[];
+  allDevices: boolean;
 }
 
-function parseArgs(argv: string[]): Args {
-  const a: Args = { force: false, dryRun: false, updateBaseline: false, headed: false, modules: [], flows: [] };
+export function parseArgs(argv: string[]): Args {
+  const a: Args = { force: false, dryRun: false, updateBaseline: false, headed: false, evidence: false, modules: [], flows: [], devices: [], allDevices: false };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case '--force': a.force = true; break;
+      case '--evidence': a.evidence = true; break;
       case '--dry-run': a.dryRun = true; break;
       case '--update-baseline': a.updateBaseline = true; break;
       case '--headed': a.headed = true; break;
       case '--no-cleanup': log.warn('--no-cleanup is meaningless here — this project never writes, so it never cleans up.'); break;
       case '--module': a.modules.push(argv[++i]); break;
       case '--flow': a.flows.push(argv[++i]); break;
+      case '--device': a.devices.push(argv[++i]); break;
+      case '--all-devices': a.allDevices = true; break;
       default:
         if (argv[i].startsWith('--')) log.warn(`Unknown flag ${argv[i]} — ignored.`);
     }
@@ -81,16 +96,19 @@ function identityOf(flow: Flow): Identity | 'none' {
  * must not leak into the next signed-out flow (or into the admin context).
  */
 class Contexts {
-  private shared = new Map<Identity, BrowserContext>();
+  // A context carries its viewport and user agent, so it is per identity AND per
+  // device. The saved storageState is shared: a session is not per device.
+  private shared = new Map<string, BrowserContext>();
   constructor(private browser: Browser) {}
 
-  async for(flow: Flow): Promise<{ context: BrowserContext; ephemeral: boolean }> {
+  async for(flow: Flow, device: DeviceProfile): Promise<{ context: BrowserContext; ephemeral: boolean }> {
     const identity = identityOf(flow);
-    if (identity === 'none') return { context: await newContext(this.browser), ephemeral: true };
-    let ctx = this.shared.get(identity);
+    if (identity === 'none') return { context: await newContext(this.browser, undefined, device), ephemeral: true };
+    const key = `${identity}@${device.id}`;
+    let ctx = this.shared.get(key);
     if (!ctx) {
-      ctx = await getAuthenticatedContext(this.browser, identity);
-      this.shared.set(identity, ctx);
+      ctx = await getAuthenticatedContext(this.browser, identity, device);
+      this.shared.set(key, ctx);
     }
     return { context: ctx, ephemeral: false };
   }
@@ -108,13 +126,31 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const runId = makeRunId();
   const startedAt = new Date();
 
-  log.banner(`RosiFit screenshot capture — run ${runId}`);
+  log.banner(`RosiFit ${args.evidence ? 'EVIDENCE' : 'screenshot'} capture — run ${runId}`);
+
+  if (args.evidence && (args.dryRun || args.updateBaseline)) {
+    log.error('--evidence cannot be combined with --dry-run or --update-baseline: an evidence run never touches the baseline.');
+    return 1;
+  }
 
   // ── 1. Safety gate ─────────────────────────────────────────────────────────
   assertTargetEnvironment();
   log.ok(`Target: ${env.appUrl}  (read-only)`);
 
   // ── 2. Flow manifests ──────────────────────────────────────────────────────
+  let selectedDevices: DeviceProfile[];
+  try {
+    selectedDevices = await resolveDevices(loadDevicesConfig(), {
+      requested: args.devices,
+      all: args.allDevices,
+      env: process.env.DEVICES,
+    });
+  } catch (err) {
+    log.error((err as Error).message);
+    return 1;
+  }
+  log.ok(`Devices: ${selectedDevices.map((d) => `${d.id} (${d.viewport.width}x${d.viewport.height} @${d.dpr}x)`).join(' · ')}`);
+
   const { flows: allFlows, errors, warnings } = loadFlows();
   warnings.forEach((w) => log.warn(w));
   if (errors.length) {
@@ -144,11 +180,32 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
   log.ok(`${flows.length} flow(s) selected out of ${allFlows.length} loaded.`);
 
+  // Evidence mode: its own output directory and PII config, set up before any
+  // browser opens so a bad config fails in milliseconds.
+  let sink: EvidenceSink | undefined;
+  if (args.evidence) {
+    const root = path.join(paths.evidence, runId);
+    if (evidenceDirInUse(root)) {
+      log.error(`Evidence directory ${relPosix(paths.root, root)} already has content — refusing to mix runs.`);
+      return 1;
+    }
+    sink = new EvidenceSink({
+      runId,
+      root,
+      knownRoutes: evidenceRoutes(readJson<KnownRoutes>(paths.knownRoutes, { last_checked: '', routes: [] }).routes, allFlows),
+      pii: loadPiiConfig(),
+      devices: selectedDevices,
+    });
+    log.ok(`Evidence mode → ${relPosix(paths.root, root)} (screenshots/, runs/ and fingerprints/ are not written)`);
+  }
+
+
   // ── 3. Change detection ────────────────────────────────────────────────────
   const repo = inspectAppRepo();
   (repo.available ? log.ok : log.warn)(repo.reason);
   const lastRun = loadLastRun();
-  const detector = new ChangeDetector(repo, lastRun, args.force);
+  // Evidence runs need every selected flow, whatever the skip filter thinks.
+  const detector = new ChangeDetector(repo, lastRun, args.force || args.evidence);
   log.info(`Skip filter: ${detector.diffSummary}`);
 
   const decisions = flows.map((flow) => {
@@ -175,37 +232,46 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const browser = args.dryRun ? null : await launchBrowser();
     const contexts = browser ? new Contexts(browser) : null;
     try {
-      for (const { flow, reason } of toRun) {
-        log.banner(`${flow.module}/${flow.flow}`);
-        log.info(`Reason: ${reason}`);
-        let ephemeral: BrowserContext | null = null;
-        try {
-          let context: BrowserContext | null = null;
-          if (contexts) {
-            const got = await contexts.for(flow);
-            context = got.context;
-            if (got.ephemeral) ephemeral = got.context;
+      for (const device of selectedDevices) {
+        for (const { flow, reason } of toRun) {
+          // A flow may declare which form factors it makes sense on.
+          if (!devicesForFlow([device], flow.devices).length) {
+            log.skip(`${device.id} · ${flow.module}/${flow.flow} — not declared for this device (devices: ${(flow.devices ?? []).join(', ')})`);
+            continue;
           }
-          const run = await executeFlow(context!, flow, {
-            runId,
-            appGitSha: repo.headSha,
-            baseline,
-            reason,
-            dryRun: args.dryRun,
-            updateBaseline: args.updateBaseline,
-          });
-          results.push(run);
-          const icon = run.status === 'failed' ? log.error : run.status === 'changed' ? log.warn : log.ok;
-          icon(`${flow.module}/${flow.flow} → ${run.status} (${run.screenshots.length} screenshot(s), ${run.duration_ms}ms)`);
-        } catch (err) {
-          log.error(`${flow.module}/${flow.flow} crashed: ${(err as Error).message}`);
-          results.push({
-            module: flow.module, flow: flow.flow, run_id: runId, app_git_sha: repo.headSha,
-            status: 'failed', reason, started_at: new Date().toISOString(), duration_ms: 0,
-            steps: [], screenshots: [], errors: [(err as Error).message],
-          });
-        } finally {
-          await ephemeral?.close().catch(() => undefined);
+          log.banner(`${device.id} · ${flow.module}/${flow.flow}`);
+          log.info(`Reason: ${reason}`);
+          let ephemeral: BrowserContext | null = null;
+          try {
+            let context: BrowserContext | null = null;
+            if (contexts) {
+              const got = await contexts.for(flow, device);
+              context = got.context;
+              if (got.ephemeral) ephemeral = got.context;
+            }
+            const run = await executeFlow(context!, flow, {
+              runId,
+              device,
+              appGitSha: repo.headSha,
+              baseline,
+              reason,
+              dryRun: args.dryRun,
+              updateBaseline: args.updateBaseline,
+              evidence: sink,
+            });
+            results.push(run);
+            const icon = run.status === 'failed' ? log.error : run.status === 'changed' ? log.warn : log.ok;
+            icon(`${device.id} · ${flow.module}/${flow.flow} → ${run.status} (${run.screenshots.length} screenshot(s), ${run.duration_ms}ms)`);
+          } catch (err) {
+            log.error(`${device.id} · ${flow.module}/${flow.flow} crashed: ${(err as Error).message}`);
+            results.push({
+              module: flow.module, flow: flow.flow, device: device.id, run_id: runId, app_git_sha: repo.headSha,
+              status: 'failed', reason, started_at: new Date().toISOString(), duration_ms: 0,
+              steps: [], screenshots: [], errors: [(err as Error).message],
+            });
+          } finally {
+            await ephemeral?.close().catch(() => undefined);
+          }
         }
       }
     } finally {
@@ -215,7 +281,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
 
   // ── 6. Persist state ───────────────────────────────────────────────────────
-  if (!args.dryRun) {
+  if (!args.dryRun && !args.evidence) {
     saveBaseline(baseline);
 
     const anyFailed = results.some((r) => r.status === 'failed');
@@ -226,13 +292,16 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       log.warn('At least one flow failed — NOT advancing the last-successful sha, so the next run re-checks these modules.');
     }
     for (const r of results) {
-      if (r.status !== 'failed' && repo.headSha) lastRun.per_flow_sha[`${r.module}/${r.flow}`] = repo.headSha;
+      const key = `${r.module}/${r.flow}`;
+      // One device failing keeps the whole flow due for re-capture.
+      const allDevicesOk = results.filter((x) => `${x.module}/${x.flow}` === key).every((x) => x.status !== 'failed');
+      if (allDevicesOk && repo.headSha) lastRun.per_flow_sha[key] = repo.headSha;
     }
     saveLastRun(lastRun);
   }
 
   // ── 7. Retention ───────────────────────────────────────────────────────────
-  if (!args.dryRun && env.runsRetentionDays > 0) {
+  if (!args.dryRun && !args.evidence && env.runsRetentionDays > 0) {
     const pruned = pruneRuns(env.runsRetentionDays);
     if (pruned.length) log.info(`Pruned ${pruned.length} run folder(s) older than ${env.runsRetentionDays} days.`);
   }
@@ -246,23 +315,33 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     app_git_sha: repo.headSha,
     app_repo_available: repo.available,
     env: { app_url: env.appUrl, app_host: appHost() },
+    devices: selectedDevices.map((d) => d.id),
     totals: {
-      flows_total: flows.length,
+      flows_total: flows.length * selectedDevices.length,
       flows_run: results.length,
       flows_skipped: skipped.length + skippedForAuth.length,
       flows_failed: results.filter((r) => r.status === 'failed').length,
       flows_changed: results.filter((r) => r.status === 'changed' || r.status === 'new').length,
       screenshots: results.reduce((n, r) => n + r.screenshots.length, 0),
     },
-    flows: results.map((r) => ({ module: r.module, flow: r.flow, status: r.status, reason: r.reason, duration_ms: r.duration_ms })),
+    flows: results.map((r) => ({ module: r.module, flow: r.flow, device: r.device, status: r.status, reason: r.reason, duration_ms: r.duration_ms })),
   };
 
   // Dry-run summaries land alongside the per-flow dry-run manifests, never
   // overwriting a real run's summary.
-  const summaryPath = args.dryRun
-    ? path.join(paths.runs, runId.slice(0, 10), '.dry-run', 'run-summary.json')
-    : path.join(paths.runs, runId.slice(0, 10), 'run-summary.json');
-  writeJson(summaryPath, summary);
+  const summaryPath = sink
+    ? path.join(sink.root, 'run-summary.json')
+    : args.dryRun
+      ? path.join(paths.runs, runId.slice(0, 10), '.dry-run', 'run-summary.json')
+      : path.join(paths.runs, runId.slice(0, 10), 'run-summary.json');
+  if (sink) {
+    const ev = sink.finish(summary);
+    log.info(`  evidence:    ${ev.flows.reduce((n, f) => n + f.pre_frames + f.post_frames, 0)} frame(s), census ${JSON.stringify(ev.census_by_class)}`);
+    log.info(`  review:      ${relPosix(paths.root, path.join(sink.root, ev.label_review_file))}`);
+    log.info(`  next:        npm run evidence:check -- --run ${runId}`);
+  } else {
+    writeJson(summaryPath, summary);
+  }
 
   log.banner('Run summary');
   log.info(`  flows:       ${summary.totals.flows_run} run · ${summary.totals.flows_skipped} skipped · ${summary.totals.flows_failed} failed`);
@@ -270,7 +349,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   log.info(`  screenshots: ${summary.totals.screenshots}`);
   log.info(`  summary:     ${relPosix(paths.root, summaryPath)}`);
 
-  if (summary.totals.flows_changed > 0) {
+  if (summary.totals.flows_changed > 0 && !args.evidence) {
     log.warn(`${summary.totals.flows_changed} module(s) changed — run \`npm run docs\` to regenerate their documentation.`);
   }
 

@@ -16,7 +16,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { paths } from './env';
+import { paths, redactSecrets } from './env';
 import { readJson, writeText, listFiles, relPosix } from './fsx';
 import { log } from './logger';
 import { askLlm, llmAvailable } from './llm';
@@ -34,17 +34,24 @@ function latestRunDate(): string | null {
 }
 
 function loadRunsForDate(date: string): FlowRun[] {
-  const dir = path.join(paths.runs, date);
-  return listFiles(dir, ['.flow-run.json']).map((f) => readJson<FlowRun>(f, null as unknown as FlowRun)).filter(Boolean);
+  const dayDir = path.join(paths.runs, date);
+  if (!fs.existsSync(dayDir)) return [];
+  // runs/<date>/<Device>/<module>-<flow>.flow-run.json
+  return fs
+    .readdirSync(dayDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+    .flatMap((e) => listFiles(path.join(dayDir, e.name), ['.flow-run.json']))
+    .map((f) => readJson<FlowRun>(f, null as unknown as FlowRun))
+    .filter(Boolean);
 }
 
 function prettifyStepId(id: string): string {
   return id.replace(/^\d+-/, '').replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
-/** Markdown image path relative to docs/. */
+/** Markdown image path relative to docs/<Device>/. */
 function imgPath(screenshotRel: string): string {
-  return path.posix.join('..', screenshotRel);
+  return path.posix.join('..', '..', screenshotRel);
 }
 
 function renderFlowSection(run: FlowRun, flow: Flow | undefined): string {
@@ -65,11 +72,13 @@ function renderFlowSection(run: FlowRun, flow: Flow | undefined): string {
       lines.push(`![${heading}](${imgPath(step.screenshot_path)})`);
       lines.push('');
     }
+    // Manifests are redacted when written, but docs/ is committed and a
+    // manifest from before identifier redaction existed can still be read here.
     const bits: string[] = [];
     if (step.next_screen) bits.push(`Screen: \`${step.next_screen}\``);
-    if (step.selector) bits.push(`Target: \`${step.selector}\``);
-    if (step.input) bits.push(`Input: \`${step.input}\``);
-    if (step.status === 'failed') bits.push(`**FAILED** — ${step.error ?? 'unknown error'}`);
+    if (step.selector) bits.push(`Target: \`${redactSecrets(step.selector)}\``);
+    if (step.input) bits.push(`Input: \`${redactSecrets(step.input)}\``);
+    if (step.status === 'failed') bits.push(`**FAILED** — ${redactSecrets(step.error ?? 'unknown error')}`);
     if (bits.length) lines.push(bits.join(' · '), '');
   }
 
@@ -165,7 +174,8 @@ export async function generateDocs(opts: { date?: string; all?: boolean } = {}):
       '',
     ].join('\n');
 
-    const file = path.join(paths.docs, `${module}.md`);
+    // One page per device: docs/<Device>/<module>.md, illustrated with that device's shots.
+    const file = path.join(paths.docs, moduleRuns[0]?.device ?? 'Mobile', `${module}.md`);
     writeText(file, body);
     written.push(relPosix(paths.root, file));
     log.ok(`docs → ${relPosix(paths.root, file)}`);

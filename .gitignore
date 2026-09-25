@@ -29,5 +29,11 @@ blob-report/
 Thumbs.db
 .DS_Store
 
+# user manual pipeline — raw evidence frames and JSON can hold personal data;
+# the DOCX is a release artifact, not a repo file
+evidence/
+manual/build/*/images/
+manual/build/**/*.docx
+
 # NOTE: screenshots/, runs/, fingerprints/ and docs/ are INTENTIONALLY tracked.
 # They are the product of this project — the daily commit diff is the signal.

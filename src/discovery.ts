@@ -25,7 +25,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Page } from '@playwright/test';
-import { paths, assertTargetEnvironment } from './env';
+import { env, paths, assertTargetEnvironment } from './env';
 import { readJson, writeJson, writeText, ensureDir, relPosix } from './fsx';
 import { log } from './logger';
 import { launchBrowser, settle } from './browser';
@@ -126,6 +126,15 @@ steps:
 `;
 
   if (!llmAvailable()) return fallback;
+  // The payload below is the screen's page HTML and a screenshot, which carry
+  // member names and emails. Personal data never reaches the LLM by default.
+  if (!env.discoveryLlm) {
+    log.skip(
+      `LLM draft proposal skipped — it would send page content (may include personal data). ` +
+        `Writing the deterministic draft instead. Opt in with DISCOVERY_LLM_SEND_PAGE_CONTENT=true.`,
+    );
+    return fallback;
+  }
 
   const png = fs.existsSync(path.join(paths.root, screenshotRel))
     ? fs.readFileSync(path.join(paths.root, screenshotRel)).toString('base64')

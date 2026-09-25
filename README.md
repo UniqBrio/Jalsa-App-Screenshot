@@ -51,9 +51,10 @@ with real data**, and the rule that replaces "TEST only" is:
 - The safety gate in `src/env.ts` refuses to start unless `APP_URL` is on the
   host allowlist, so a typo can never point a browser holding a real PIN at
   something unexpected.
-- The PIN is redacted from every run manifest and log line before it is
-  written (`redactSecrets` in `src/env.ts`). `.env` and `.auth/` — the saved
-  session — are gitignored.
+- The PIN and the sign-in mobile numbers are redacted from every run manifest,
+  log line and generated doc before it is written (`redactSecrets` in
+  `src/env.ts`). `.env` and `.auth/` — the saved session — are gitignored, and
+  `.env.example` holds placeholders only.
 
 Things the flows deliberately never touch, because they act on real people:
 **Sign out**, **Send** (`send-trigger`), **Upload** (choosing a file),

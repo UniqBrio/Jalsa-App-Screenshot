@@ -48,6 +48,8 @@ export interface CaptureOptions {
    * a mid-load frame is unmistakable and never mistaken for the settled state.
    */
   unstable?: boolean;
+  /** Output root. Defaults to screenshots/; evidence mode points it inside evidence/<run_id>/. */
+  root?: string;
 }
 
 export function screenshotPathFor(
@@ -55,8 +57,9 @@ export function screenshotPathFor(
   flow: string,
   stepId: string,
   mode: CaptureFileMode,
+  root: string = paths.screenshots,
 ): string {
-  return path.join(paths.screenshots, module, flow, `${stepId}.${mode}.png`);
+  return path.join(root, module, flow, `${stepId}.${mode}.png`);
 }
 
 function maskLocators(page: Page, mask: string[] | undefined): Locator[] {
@@ -74,7 +77,7 @@ export async function capture(page: Page, opts: CaptureOptions): Promise<string[
   // Stability gate expired: one plainly-labelled viewport shot, no full/element
   // expansion (a mid-load DOM isn't worth stitching).
   if (opts.unstable) {
-    const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'loading');
+    const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'loading', opts.root);
     ensureDir(path.dirname(abs));
     await page.screenshot({
       path: abs,
@@ -109,7 +112,7 @@ export async function capture(page: Page, opts: CaptureOptions): Promise<string[
 /** The failure shot — same mask as the step asked for, so PII stays masked. */
 export async function captureFailure(page: Page, opts: Omit<CaptureOptions, 'spec'>): Promise<string | null> {
   try {
-    const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'failed');
+    const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'failed', opts.root);
     ensureDir(path.dirname(abs));
     await page.screenshot({
       path: abs,
@@ -125,7 +128,7 @@ export async function captureFailure(page: Page, opts: Omit<CaptureOptions, 'spe
 }
 
 async function captureViewport(page: Page, opts: CaptureOptions): Promise<string> {
-  const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'viewport');
+  const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'viewport', opts.root);
   ensureDir(path.dirname(abs));
   await page.screenshot({
     path: abs,
@@ -143,7 +146,7 @@ async function captureViewport(page: Page, opts: CaptureOptions): Promise<string
  * that is the content a page-level fullPage capture would silently miss.
  */
 async function captureFull(page: Page, opts: CaptureOptions): Promise<string> {
-  const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'full');
+  const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'full', opts.root);
   ensureDir(path.dirname(abs));
 
   const marked = await markOverflowingOverlay(page);
@@ -170,7 +173,7 @@ async function captureFull(page: Page, opts: CaptureOptions): Promise<string> {
 }
 
 async function captureElement(page: Page, opts: CaptureOptions, selector: string): Promise<string> {
-  const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'element');
+  const abs = screenshotPathFor(opts.module, opts.flow, opts.stepId, 'element', opts.root);
   ensureDir(path.dirname(abs));
 
   // Mark the element itself as the target, and its own scroller if it has one.

@@ -1,0 +1,46 @@
+{
+  "$comment": [
+    "Device profiles — the form factors a run can capture. `npm run capture` asks which ones",
+    "to use; --device <id> (repeatable), --all-devices or DEVICES=a,b answer without asking.",
+    "The id is a folder name: screenshots/<id>/<module>/<flow>/<step>.<mode>.png, and it is part",
+    "of the fingerprint key, so each device keeps its own change-detection baseline.",
+    "",
+    "viewport is the BROWSER viewport, not a screen resolution (a 1920x1080 monitor shows about",
+    "1920x950 once browser chrome is subtracted, and few CSS breakpoints act above ~1440).",
+    "emulate borrows a real device's user agent from Playwright's descriptors; null means a plain",
+    "desktop browser. isMobile/hasTouch decide whether the app serves its mobile layout at all —",
+    "a wide viewport with isMobile: true would still be a phone capture.",
+    "",
+    "dpr is the pixel density; the C1 evidence gate checks every captured frame against it."
+  ],
+  "devices": [
+    {
+      "id": "Mobile",
+      "label": "iPhone 14 / Pixel 7 class",
+      "viewport": { "width": 390, "height": 844 },
+      "dpr": 2,
+      "emulate": "Pixel 7",
+      "isMobile": true,
+      "hasTouch": true
+    },
+    {
+      "id": "Tablet",
+      "label": "iPad Air portrait",
+      "viewport": { "width": 820, "height": 1180 },
+      "dpr": 2,
+      "emulate": "iPad (gen 7)",
+      "isMobile": true,
+      "hasTouch": true
+    },
+    {
+      "id": "Laptop",
+      "label": "MacBook Air / 16:10 laptop",
+      "viewport": { "width": 1440, "height": 900 },
+      "dpr": 2,
+      "emulate": null,
+      "isMobile": false,
+      "hasTouch": false
+    }
+  ],
+  "default": ["Mobile"]
+}

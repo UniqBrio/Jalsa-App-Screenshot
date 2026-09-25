@@ -187,6 +187,12 @@ export interface Flow {
   vars?: Record<string, string>;
   /** Skip without deleting the file. */
   disabled?: boolean;
+  /**
+   * Device profiles (config/devices.json ids) this flow makes sense on. Absent
+   * means every device the run selected. A flow pinned to one form factor — a
+   * phone-only gesture, a desktop-only wide table — names it here.
+   */
+  devices?: string[];
   /** Runs before `steps`. Same vocabulary; screenshots default to off. */
   setup?: FlowStep[];
   steps: FlowStep[];
@@ -229,6 +235,8 @@ export type FlowStatus = 'changed' | 'unchanged' | 'skipped' | 'failed' | 'new';
 export interface FlowRun {
   module: string;
   flow: string;
+  /** Device profile id this run captured on — also the top output folder. */
+  device: string;
   run_id: string;
   app_git_sha: string | null;
   status: FlowStatus;
@@ -256,7 +264,8 @@ export interface RunSummary {
     flows_changed: number;
     screenshots: number;
   };
-  flows: Array<Pick<FlowRun, 'module' | 'flow' | 'status' | 'reason' | 'duration_ms'>>;
+  devices: string[];
+  flows: Array<Pick<FlowRun, 'module' | 'flow' | 'device' | 'status' | 'reason' | 'duration_ms'>>;
 }
 
 export interface RoutesMapEntry {

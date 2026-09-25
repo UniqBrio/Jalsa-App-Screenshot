@@ -24,6 +24,7 @@ import { env, paths } from './env';
 import { ensureDir, writeJson } from './fsx';
 import { log } from './logger';
 import { newContext, settle } from './browser';
+import type { DeviceProfile } from './devices';
 
 export type Identity = 'admin' | 'staff';
 
@@ -183,6 +184,7 @@ async function authenticate(page: Page, identity: Identity, creds: Creds): Promi
 export async function getAuthenticatedContext(
   browser: Browser,
   identity: Identity,
+  device?: DeviceProfile,
 ): Promise<BrowserContext> {
   const strategy = strategies[identity];
   const problem = strategy.preflight();
@@ -192,7 +194,7 @@ export async function getAuthenticatedContext(
 
   // Try the saved session first.
   if (fs.existsSync(strategy.statePath)) {
-    const ctx = await newContext(browser, strategy.statePath);
+    const ctx = await newContext(browser, strategy.statePath, device);
     const page = await ctx.newPage();
     const ok = await isAuthenticated(page).catch(() => false);
     await page.close();
@@ -205,7 +207,7 @@ export async function getAuthenticatedContext(
     fs.rmSync(strategy.statePath, { force: true });
   }
 
-  const ctx = await newContext(browser);
+  const ctx = await newContext(browser, undefined, device);
   const page = await ctx.newPage();
   await authenticate(page, identity, strategy.creds());
   await writeStorageStateAtomically(ctx, strategy.statePath);

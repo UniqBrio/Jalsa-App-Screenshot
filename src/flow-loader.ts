@@ -288,6 +288,17 @@ function selectorsIn(step: FlowStep): Array<{ field: string; value: string }> {
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
+/** Device ids from config/devices.json, or [] when it cannot be read (reported separately). */
+function knownDeviceIds(): string[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { loadDevicesConfig } = require('./devices') as typeof import('./devices');
+    return loadDevicesConfig().devices.map((d) => d.id);
+  } catch {
+    return [];
+  }
+}
+
 export function validateFlow(flow: Flow, rel: string, routesMap: RoutesMap): string[] {
   const e: string[] = [];
   const at = (msg: string) => `${rel}: ${msg}`;
@@ -318,6 +329,18 @@ export function validateFlow(flow: Flow, rel: string, routesMap: RoutesMap): str
   }
   if (flow.tags !== undefined && !Array.isArray(flow.tags)) {
     e.push(at('"tags" must be a list.'));
+  }
+  if (flow.devices !== undefined) {
+    if (!Array.isArray(flow.devices) || !flow.devices.length || !flow.devices.every((d) => typeof d === 'string' && d)) {
+      e.push(at('"devices" must be a non-empty list of device ids from config/devices.json.'));
+    } else {
+      const known = knownDeviceIds();
+      // An empty list means the config could not be read; the dedicated config check reports that.
+      const unknown = known.length ? flow.devices.filter((d) => !known.some((k) => k.toLowerCase() === d.toLowerCase())) : [];
+      if (unknown.length) {
+        e.push(at(`"devices" names ${unknown.map((u) => `"${u}"`).join(', ')}, which config/devices.json does not define (${known.join(', ')}).`));
+      }
+    }
   }
   if (flow.settle_ms !== undefined && typeof flow.settle_ms !== 'number') {
     e.push(at('"settle_ms" must be a number of milliseconds.'));

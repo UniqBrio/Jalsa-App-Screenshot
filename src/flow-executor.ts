@@ -22,6 +22,7 @@ import { capture, captureFailure } from './screenshot';
 import { domHash, fingerprintKey, compareFingerprint, updateFingerprint } from './fingerprint';
 import { readVisualState, diffVisualState, unknownVisualState, VisualState } from './visual-state';
 import { allSteps } from './flow-loader';
+import type { EvidenceSink, PreState } from './manual/evidence-capture';
 import type {
   Flow,
   FlowStep,
@@ -35,9 +36,12 @@ import type {
   CaptureSpec,
 } from './types';
 import { VIEWPORT_PRESETS } from './types';
+import type { DeviceProfile } from './devices';
 
 export interface ExecuteOptions {
   runId: string;
+  /** The device profile this execution captures on; its id is the top output folder. */
+  device: DeviceProfile;
   appGitSha: string | null;
   baseline: Fingerprints;
   /** Why the runner decided to execute this flow — recorded in the manifest. */
@@ -46,6 +50,14 @@ export interface ExecuteOptions {
   dryRun?: boolean;
   /** Rewrite the baseline entry for every step captured this run. */
   updateBaseline?: boolean;
+  /**
+   * Evidence mode (user manual pipeline). When set, every write goes under the
+   * sink's evidence/<run_id>/ directory — screenshots, failure shots and the
+   * run manifest — the fingerprint baseline is neither compared nor updated,
+   * and the sink's before/after hooks run around each `steps` step. When
+   * absent, nothing below behaves any differently.
+   */
+  evidence?: EvidenceSink;
 }
 
 /** Names the flow, step and selector on every failure. */
@@ -73,6 +85,7 @@ export async function executeFlow(
   const run: FlowRun = {
     module: flow.module,
     flow: flow.flow,
+    device: opts.device.id,
     run_id: opts.runId,
     app_git_sha: opts.appGitSha,
     status: 'unchanged',
@@ -110,8 +123,9 @@ export async function executeFlow(
   }
 
   // Clear last run's failure screenshots so a fixed step doesn't leave a
-  // misleading `*.failed.png` sitting in the repo forever.
-  clearFailureScreenshots(flow.module, flow.flow);
+  // misleading `*.failed.png` sitting in the repo forever. An evidence run
+  // writes into its own fresh directory and must not touch screenshots/.
+  if (!opts.evidence) clearFailureScreenshots(opts.device.id, flow.module, flow.flow);
 
   const page = await context.newPage();
   const state: RunState = { anyChanged: false, anyNew: false };
@@ -137,7 +151,8 @@ export async function executeFlow(
     run.status = resolveStatus(state.anyChanged, state.anyNew);
   }
   run.duration_ms = Date.now() - startedAt.getTime();
-  writeRunManifest(run);
+  if (opts.evidence) opts.evidence.writeFlowRun(run);
+  else writeRunManifest(run);
   return run;
 }
 
@@ -192,8 +207,13 @@ async function runPhase(
 
     const mask = (step.mask ?? []).map((m) => interpolate(m, vars));
     const settleMs = step.settle_ms ?? flow.settle_ms ?? DEFAULT_SETTLE_MS;
+    // Evidence hooks run for `steps` only — setup and teardown are plumbing.
+    const evidence = phase === 'steps' ? opts.evidence : undefined;
+    let pre: PreState | null = null;
 
     try {
+      if (evidence) pre = await evidence.before(page, opts.device, flow, step, selector, mask);
+
       // `auto` needs a stable "before" reading, so settle first — comparing a
       // settled state against an unsettled one manufactures phantom changes.
       let before: VisualState | null = null;
@@ -237,14 +257,18 @@ async function runPhase(
           spec,
           mask,
           unstable: result.unstable,
+          root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(paths.screenshots, opts.device.id),
         });
         result.screenshot_paths = files;
         result.screenshot_path = files[0] ?? null;
         run.screenshots.push(...files);
 
-        if (files.length) {
+        if (files.length && opts.evidence) {
+          // Evidence runs record the hash but never judge or move the baseline.
+          result.dom_hash = await domHash(page, mask);
+        } else if (files.length) {
           const hash = await domHash(page, mask);
-          const key = fingerprintKey(flow.module, flow.flow, step.id);
+          const key = fingerprintKey(opts.device.id, flow.module, flow.flow, step.id);
           const verdict = compareFingerprint(opts.baseline, key, hash);
           result.dom_hash = hash;
           result.fingerprint = verdict;
@@ -261,6 +285,7 @@ async function runPhase(
           (result.fingerprint ? ` [dom:${result.fingerprint}]` : '') +
           (result.screenshot_paths.length > 1 ? ` [${result.screenshot_paths.length} shots]` : ''),
       );
+      if (evidence && pre) await evidence.after(page, opts.device, flow, step, result, pre, mask, vars);
     } catch (err) {
       const message = redactSecrets((err as Error).message.split('\n')[0]);
       const described = redactSecrets(stepError(flow, step, selector, message));
@@ -277,6 +302,7 @@ async function runPhase(
         flow: flow.flow,
         stepId: step.id,
         mask,
+        root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(paths.screenshots, opts.device.id),
       });
       if (result.screenshot_path) result.screenshot_paths = [result.screenshot_path];
 
@@ -285,7 +311,13 @@ async function runPhase(
         log.warn(`${described} (${phase === 'teardown' ? 'teardown' : 'optional'}, continuing)`);
         result.status = 'skipped';
         run.errors.push(`[${phase === 'teardown' ? 'teardown' : 'optional'}] ${described}`);
-      } else {
+      }
+      // A failure is evidence too: record what the page looked like when it happened.
+      // `pre` is null only if the before-hook itself never ran; then there is nothing to pair.
+      if (evidence) {
+        await evidence.after(page, opts.device, flow, step, result, pre ?? (await evidence.before(page, opts.device, flow, { ...step, action: 'snapshot' }, null, mask)), mask, vars);
+      }
+      if (!optional) {
         log.error(described);
         run.errors.push(described);
         result.duration_ms = Date.now() - t0;
@@ -668,8 +700,8 @@ async function runAssertions(
   }
 }
 
-function clearFailureScreenshots(module: string, flow: string): void {
-  const dir = path.join(paths.screenshots, module, flow);
+function clearFailureScreenshots(device: string, module: string, flow: string): void {
+  const dir = path.join(paths.screenshots, device, module, flow);
   if (!fs.existsSync(dir)) return;
   for (const f of fs.readdirSync(dir)) {
     if (f.endsWith('.failed.png')) fs.rmSync(path.join(dir, f), { force: true });
@@ -681,8 +713,8 @@ function writeRunManifest(run: FlowRun, dryRun = false): void {
   // Dry-run manifests land in a distinct subfolder so they can never be
   // mistaken for (or silently overwrite) a real capture run's history.
   const file = dryRun
-    ? path.join(paths.runs, day, '.dry-run', `${run.module}-${run.flow}.flow-run.json`)
-    : path.join(paths.runs, day, `${run.module}-${run.flow}.flow-run.json`);
+    ? path.join(paths.runs, day, '.dry-run', run.device, `${run.module}-${run.flow}.flow-run.json`)
+    : path.join(paths.runs, day, run.device, `${run.module}-${run.flow}.flow-run.json`);
   writeJson(file, run);
   log.step(`run manifest → ${relPosix(paths.root, file)}`);
 }

@@ -1,0 +1,30 @@
+{
+  "$comment": [
+    "Open questions carried into the Evidence Index (C2) for a human to decide. Read by evidence:index only.",
+    "match.texts: exact L texts (compared verbatim, never normalised) — the index links every vocabulary entry",
+    "  and frame that shows one, and keeps the text unchanged while the item is open.",
+    "match.record_screen_query_id: true — the index links every frame whose route carries a record id in its",
+    "  query string but was not treated as a record screen (the deferred Option B gap in pii-regions.json).",
+    "To resolve an item set status to \"resolved\" and write the decision in resolution; then rebuild the index."
+  ],
+  "items": [
+    {
+      "id": "R-C2-001",
+      "topic": "placeholder-example-name",
+      "status": "open",
+      "origin": "C1 gate review, evidence run 2026-09-15T11-36-09Z",
+      "question": "The Add Member form's placeholders use a person-shaped example name. It is fixed app copy, not record data, but a real member may share the name. Show it verbatim in the manual, or use a neutral example?",
+      "match": { "texts": ["e.g. Anitha R", "e.g. Anitha Rajesh"] },
+      "resolution": null
+    },
+    {
+      "id": "R-C2-002",
+      "topic": "record-screen-query-id",
+      "status": "open",
+      "origin": "C1 gate fix, evidence run 2026-09-15T12-13-39Z (Option B, deferred)",
+      "question": "A route whose record id is in the query string is not treated as a record screen, so static-control can label saved field values as L. Only course-branch-field and course-template-field are pinned by config. Adopt the classifier change?",
+      "match": { "record_screen_query_id": true },
+      "resolution": null
+    }
+  ]
+}
