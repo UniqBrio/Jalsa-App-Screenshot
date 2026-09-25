@@ -136,5 +136,8 @@
     ]
   },
   "dataIsolation": "none",
-  "outboundKillSwitch": null
+  "outboundKillSwitch": null,
+  "pii": {
+    "phonePattern": null
+  }
 }

@@ -258,6 +258,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       knownRoutes: evidenceRoutes(readJson<KnownRoutes>(paths.knownRoutes, { last_checked: '', routes: [] }).routes, allFlows),
       pii: loadPiiConfig(),
       devices: selectedDevices,
+      phonePattern: profile.pii.phonePattern,
     });
     log.ok(`Evidence mode → ${relPosix(paths.root, root)} (screenshots/, runs/ and fingerprints/ are not written)`);
   }

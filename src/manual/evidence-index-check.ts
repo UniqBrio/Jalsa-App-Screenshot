@@ -25,7 +25,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { env, paths } from '../env';
+import { env, paths, profile } from '../env';
 import { writeJson, relPosix } from '../fsx';
 import { log } from '../logger';
 import type { Flow, FlowRun } from '../types';
@@ -65,6 +65,8 @@ export interface IndexCheckResult {
 }
 
 export interface IndexCheckOptions extends BuildOptions {
+  /** The app profile's phone shape, for the C1 scan. */
+  phonePattern?: string | null;
   /** Passed through to the C1 privacy scan. */
   identifiers?: Array<{ name: string; digits: string; text?: string }>;
   secrets?: string[];
@@ -259,6 +261,7 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
     runDir: o.runDir,
     expectedDpr: o.expectedDpr,
     deviceDpr: deviceDprMap(),
+    phonePattern: o.phonePattern,
     requireFlows: o.requiredFlows,
     identifiers: o.identifiers,
     secrets: o.secrets,
@@ -327,6 +330,7 @@ if (require.main === module) {
       manifestHashes: manifestHashes(flows),
       requiredFlows: requireFlows,
       expectedDpr: env.browser.deviceScaleFactor,
+      phonePattern: profile.pii.phonePattern,
       reviewItems: review.items,
       reviewItemsSha256: review.sha256,
       repoRoot: paths.root,

@@ -1,12 +1,16 @@
 /**
- * The four write interlocks, end to end: the real runner (a child process)
- * against a tiny local app that COUNTS every write request it receives.
+ * Every write interlock, end to end: the real runner (a child process) against a
+ * tiny local app that COUNTS every write request it receives.
  *
- *   control   all four gates hold      → the write happens, teardown deletes it
+ *   control   all gates hold            → the write happens, teardown deletes it
  *   gate 1    WRITE_MODE is not dummy   → flow skipped, zero writes
  *   gate 2    flow lacks writes/dummy   → refused by validation, zero writes
  *   gate 3    tenant fingerprint wrong  → run aborted before the first action
  *   gate 4    host not write-allowed    → run aborted before the first action
+ *   gate 5    dataIsolation "none"      → run aborted before the first action
+ *   gate 6    no outboundKillSwitch     → run aborted before the first action
+ *   gate 7    a `sends: true` step      → flow skipped and flagged, zero writes
+ *                                         (with no attestation — dummy mode too)
  *
  * The control case matters: it proves the harness CAN write, so a zero in the
  * other cases is the gate, not a broken fixture. Everything is synthetic and
@@ -27,8 +31,8 @@ const TENANT = { id: 'sample-tenant-0001', name: 'Sample Org (test)' };
 
 // ─── the local app ───────────────────────────────────────────────────────────
 
-interface AppState { tenantId: string; orders: string[]; writes: number; deletes: number }
-const state: AppState = { tenantId: TENANT.id, orders: [], writes: 0, deletes: 0 };
+interface AppState { tenantId: string; orders: string[]; writes: number; deletes: number; sends: number }
+const state: AppState = { tenantId: TENANT.id, orders: [], writes: 0, deletes: 0, sends: 0 };
 
 const page = (body: string, script = '') =>
   `<!doctype html><html><head><meta charset="utf-8"></head><body>${body}<script>${script}</script></body></html>`;
@@ -49,6 +53,11 @@ function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
       state.orders.push(JSON.parse(body).name);
       res.writeHead(201); res.end(); return;
     }
+    if (req.method === 'POST' && url.pathname === '/api/send') {
+      // Stands in for the one click that actually mails a person.
+      state.sends += 1;
+      res.writeHead(204); res.end(); return;
+    }
     if (req.method === 'POST' && url.pathname === '/api/orders/delete') {
       state.deletes += 1;
       state.orders = state.orders.filter((o) => o !== JSON.parse(body).name);
@@ -64,8 +73,9 @@ function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
       case '/home':
         return html(page(shell('<h1>Home</h1>')));
       case '/orders/new':
-        return html(page(shell(`<input data-testid="order-name"><button data-testid="order-save">Save</button>`),
-          `document.querySelector('[data-testid=order-save]').onclick = function () {
+        return html(page(shell(`<input data-testid="order-name"><button data-testid="order-send">Send</button><button data-testid="order-save">Save</button>`),
+          `document.querySelector('[data-testid=order-send]').onclick = function () { fetch('/api/send', { method: 'POST', body: '{}' }); };
+           document.querySelector('[data-testid=order-save]').onclick = function () {
              fetch('/api/orders', { method: 'POST', body: JSON.stringify({ name: document.querySelector('[data-testid=order-name]').value }) })
                .then(function () { location.href = '/orders'; });
            };`));
@@ -117,7 +127,7 @@ teardown:
 
 const made: string[] = [];
 
-function makeApp(o: { writeAllowedHosts?: string[]; flow?: string } = {}): string {
+function makeApp(o: { writeAllowedHosts?: string[]; flow?: string; dataIsolation?: string; killSwitch?: unknown } = {}): string {
   const apps = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-apps-'));
   made.push(apps);
   const dir = path.join(apps, 'sample-app');
@@ -127,6 +137,9 @@ function makeApp(o: { writeAllowedHosts?: string[]; flow?: string } = {}): strin
   cfg.baseUrl = origin;
   cfg.allowedHosts = ['127.0.0.1'];
   cfg.writeAllowedHosts = o.writeAllowedHosts ?? ['127.0.0.1'];
+  // The fixture app is a genuinely separate deployment with messaging switched off.
+  cfg.dataIsolation = o.dataIsolation ?? 'separate-project';
+  cfg.outboundKillSwitch = o.killSwitch === undefined ? { email: 'EMAIL_PROVIDER=dev', verifiedOn: '2026-09-25' } : o.killSwitch;
   cfg.loginAdapter.options.loginPath = '/';
   fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2));
   const routes = { orders: { flows: ['create-order'], source_paths: ['x'] } };
@@ -158,6 +171,7 @@ function reset(tenantId = TENANT.id): void {
   state.orders = [];
   state.writes = 0;
   state.deletes = 0;
+  state.sends = 0;
 }
 
 before(async () => {
@@ -225,4 +239,57 @@ test('gate 4 — the host is not in writeAllowedHosts: the run aborts before the
   assert.match(out, /WRITE GATES FAILED/);
   assert.match(out, /not in writeAllowedHosts/);
   assert.equal(state.writes, 0);
+});
+
+test('gate 5 — dataIsolation "none": the run aborts before the first action, nothing is written', async () => {
+  for (const isolation of ['none', undefined]) {
+    reset();
+    // undefined => the field is absent, which must read as "none", not as permission.
+    const apps = makeApp(isolation === undefined ? { dataIsolation: undefined } : { dataIsolation: isolation });
+    if (isolation === undefined) {
+      const cfgFile = path.join(apps, 'sample-app', 'app.config.json');
+      const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+      delete cfg.dataIsolation;
+      fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2));
+    }
+    const { code, out } = await runCapture(apps, { WRITE_MODE: 'dummy' });
+    assert.equal(code, 1, out);
+    assert.match(out, /WRITE GATES FAILED/);
+    assert.match(out, /dataIsolation "none"/);
+    assert.doesNotMatch(out, /010-new navigated/, 'no flow step ran');
+    assert.equal(state.writes, 0, `dataIsolation=${String(isolation)}`);
+  }
+});
+
+test('gate 6 — no outboundKillSwitch attestation: the run aborts, nothing is written', async () => {
+  reset();
+  const { code, out } = await runCapture(makeApp({ killSwitch: null }), { WRITE_MODE: 'dummy' });
+  assert.equal(code, 1, out);
+  assert.match(out, /WRITE GATES FAILED/);
+  assert.match(out, /no outboundKillSwitch attestation/);
+  assert.doesNotMatch(out, /010-new navigated/, 'no flow step ran');
+  assert.equal(state.writes, 0);
+});
+
+test('gate 7 — a step that confirms a send is blocked without an attestation, even in dummy mode', async () => {
+  // The send step sits before the save, so "zero writes" also proves the flow
+  // was skipped whole rather than walked up to the send.
+  const sendingFlow = WRITE_FLOW.replace(`  - id: 030-save`, `  - id: 025-send
+    action: click
+    selector: '[data-testid="order-send"]'
+    sends: true
+  - id: 030-save`);
+  reset();
+  const { code, out } = await runCapture(makeApp({ flow: sendingFlow, killSwitch: null }), { WRITE_MODE: 'dummy' });
+  assert.equal(code, 0, out);
+  assert.match(out, /confirms an outbound message/);
+  assert.equal(state.writes, 0, 'the whole flow is skipped, so nothing is written');
+  assert.equal(state.sends, 0, 'and nothing is sent');
+
+  // With the attestation present, the same flow is allowed to run.
+  reset();
+  const ok = await runCapture(makeApp({ flow: sendingFlow }), { WRITE_MODE: 'dummy' });
+  assert.equal(ok.code, 0, ok.out);
+  assert.doesNotMatch(ok.out, /confirms an outbound message/);
+  assert.equal(state.writes, 1, 'attested: the flow runs and the write happens');
 });

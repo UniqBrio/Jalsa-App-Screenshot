@@ -70,6 +70,8 @@ export interface EvidenceSinkOptions {
   pii: PiiConfig;
   /** Device profiles this run captures on; each contributes its own expected density. */
   devices: DeviceProfile[];
+  /** The app profile's phone shape (pii.phonePattern). Absent: no phone rule. */
+  phonePattern?: string | null;
   /** Defaults to the .env values; tests pass synthetic ones. */
   identifiers?: IdentifierValue[];
   secrets?: string[];
@@ -111,6 +113,7 @@ export class EvidenceSink {
       secrets: this.secrets,
       safe_literals: safeLiterals(flow),
       label_texts: this.opts.pii.label_texts,
+      phone_pattern: this.opts.phonePattern ?? undefined,
     };
   }
 

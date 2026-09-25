@@ -119,6 +119,17 @@ export interface DiscoveryNavSource {
   tab: boolean;
 }
 
+/**
+ * PII shapes that are specific to one app's country and data, not to the engine.
+ * A phone number looks different in every market, so the core carries no phone
+ * assumption at all: an app that wants phone-shaped text classified as personal
+ * says what that shape is.
+ */
+export interface PiiPatterns {
+  /** Regex source matching a phone number in this app's market. null = no phone rule. */
+  phonePattern: string | null;
+}
+
 export interface AppProfile {
   id: string;
   /** Absolute path of apps/<id>/. */
@@ -140,6 +151,8 @@ export interface AppProfile {
   loginAdapter: LoginAdapterConfig;
   /** How test data is isolated from real data. "none" refuses every write. */
   dataIsolation: DataIsolation;
+  /** App-specific PII shapes for evidence classification. */
+  pii: PiiPatterns;
   /** Attestation that outbound messaging is off for this target, or null. */
   outboundKillSwitch: OutboundKillSwitch | null;
   accounts: Record<string, AccountConfig>;
@@ -339,6 +352,18 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
     };
   }
 
+  // App-specific PII shapes. Absent means the engine applies no phone rule.
+  const piiRaw = o.pii ?? {};
+  let phonePattern: string | null = null;
+  if (typeof piiRaw !== 'object' || Array.isArray(piiRaw)) e.push('pii: an object, e.g. { "phonePattern": "..." }');
+  else if (piiRaw.phonePattern !== undefined && piiRaw.phonePattern !== null) {
+    if (typeof piiRaw.phonePattern !== 'string' || !piiRaw.phonePattern) e.push('pii.phonePattern: a regular-expression source string, or null');
+    else {
+      try { new RegExp(piiRaw.phonePattern); phonePattern = piiRaw.phonePattern; }
+      catch (err) { e.push(`pii.phonePattern: not a valid regular expression (${(err as Error).message})`); }
+    }
+  }
+
   // Isolation: absent means "none". Writes are refused unless it is a real separation.
   const dataIsolation: DataIsolation = o.dataIsolation ?? 'none';
   if (!DATA_ISOLATIONS.includes(dataIsolation)) {
@@ -411,6 +436,7 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
     docsAudience: optStr('docsAudience', 'a person using the app for the first time'),
     loginAdapter,
     dataIsolation,
+    pii: { phonePattern },
     outboundKillSwitch,
     accounts,
     defaultAccount,

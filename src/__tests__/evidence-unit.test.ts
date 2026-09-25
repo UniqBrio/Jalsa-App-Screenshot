@@ -30,11 +30,14 @@ import type { ClassifyInput, ClassifyRules } from '../manual/census-probe';
 import type { Flow, FlowStep, KnownRoute } from '../types';
 import type { VisualState } from '../visual-state';
 
+/** A sample market's phone shape. It is an app setting (profile pii.phonePattern), never a core rule. */
+const INDIA_PHONE = String.raw`(?<![0-9])(?:\+?91[\s-]*)?[6-9][0-9]{4}[\s-]?[0-9]{5}(?![0-9])`;
 const RULES: ClassifyRules = {
   identifiers: [{ name: 'SIGNIN_MOBILE', digits: '9000048261' }],
   secrets: ['4826'],
   safe_literals: ['a', 'Backspace'],
   label_texts: ['continue', 'welcome a new member', 'attendance'],
+  phone_pattern: INDIA_PHONE,
 };
 const plain = (text: string, over: Partial<ClassifyInput> = {}): ClassifyInput => ({
   text, source: 'text', region: null, control_static_testid: false, record_screen: false, ...over,
@@ -326,7 +329,7 @@ function writeRun(mutate?: (doc: ReturnType<typeof validDoc>, dir: string) => vo
   return dir;
 }
 const runCheck = (dir: string, requireFlows: string[] = ['zz/fx']) =>
-  check.checkEvidenceRun({ runDir: dir, expectedDpr: 2, requireFlows, identifiers: RULES.identifiers, secrets: RULES.secrets });
+  check.checkEvidenceRun({ runDir: dir, expectedDpr: 2, requireFlows, identifiers: RULES.identifiers, secrets: RULES.secrets, phonePattern: INDIA_PHONE });
 const errorChecks = (r: ReturnType<typeof runCheck>) => r.findings.filter((f) => f.severity === 'error').map((f) => f.check);
 
 test('evidence:check passes a clean run, and digests containing PIN digits are not false positives', () => {
@@ -348,7 +351,7 @@ test('evidence:check fails on an email, a phone number, the identifier or the PI
 
 test('on a dummy flow, email/phone shapes are warnings — credentials stay errors', () => {
   const dummyCheck = (dir: string) =>
-    check.checkEvidenceRun({ runDir: dir, expectedDpr: 2, requireFlows: ['zz/fx'], identifiers: RULES.identifiers, secrets: RULES.secrets, dummyFlows: ['zz/fx'] });
+    check.checkEvidenceRun({ runDir: dir, expectedDpr: 2, requireFlows: ['zz/fx'], identifiers: RULES.identifiers, secrets: RULES.secrets, dummyFlows: ['zz/fx'], phonePattern: INDIA_PHONE });
   const email = dummyCheck(writeRun((d) => { d.error = 'saw someone.synthetic@example.com'; }));
   assert.equal(errorChecks(email).includes('privacy-email'), false);
   assert.ok(email.findings.some((f) => f.check === 'privacy-email' && f.severity === 'warn'), 'still reported');

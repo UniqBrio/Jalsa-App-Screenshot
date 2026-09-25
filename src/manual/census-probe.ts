@@ -16,7 +16,7 @@
  * Rule order (architecture §8.2), first match wins:
  *   1. secrets        password inputs, PIN values                         → S
  *   2. identifiers    the operator mobile numbers, or a ≥5-digit fragment → I
- *   3. patterns       email or phone shape                                → P
+ *   3. patterns       email shape, or the app profile's phone shape        → P
  *   4. data region    config region or automatic list/record region      → region class
  *   5. input values   a literal typed by the flow (run_tag: false)        → L, otherwise P
  *   6. label sources  placeholder, label allowlist, symbol-only text,
@@ -40,6 +40,12 @@ export interface ClassifyRules {
   safe_literals: string[];
   /** Pre-normalised (lower-case, whitespace collapsed). */
   label_texts: string[];
+  /**
+   * Regex source for a phone number in THIS app's market (profile pii.phonePattern).
+   * Absent or empty: no phone-shape rule is applied — the engine assumes nothing
+   * about what a phone number looks like.
+   */
+  phone_pattern?: string;
 }
 
 export interface ClassifyInput {
@@ -107,7 +113,13 @@ export function classifyTextRun(input: ClassifyInput, rules: ClassifyRules): { c
 
   // 3. personal-data patterns
   if (/\S@\S/.test(collapsed)) return { class: 'P', rule: 'email-pattern' };
-  if (/(?<![0-9])(?:\+?91[\s-]*)?[6-9][0-9]{4}[\s-]?[0-9]{5}(?![0-9])/.test(collapsed)) return { class: 'P', rule: 'phone-pattern' };
+  if (rules.phone_pattern) {
+    try {
+      if (new RegExp(rules.phone_pattern).test(collapsed)) return { class: 'P', rule: 'phone-pattern' };
+    } catch {
+      // A profile that will not compile is caught by profile validation, not here.
+    }
+  }
 
   // 4. data regions
   if (input.region) return { class: input.region.class, rule: 'region:' + input.region.id };

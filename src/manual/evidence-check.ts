@@ -21,7 +21,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { env, identifierValues, paths, secretValues, type IdentifierValue } from '../env';
+import { env, identifierValues, paths, profile, secretValues, type IdentifierValue } from '../env';
 import { writeJson } from '../fsx';
 import { log } from '../logger';
 import type { FlowRun } from '../types';
@@ -42,6 +42,8 @@ export interface CheckOptions {
   expectedDpr: number;
   /** Device id -> its deviceScaleFactor. A frame is checked against its own device. */
   deviceDpr?: Record<string, number>;
+  /** The app profile's phone shape. Absent: phone-shaped text is not scanned for. */
+  phonePattern?: string | null;
   requireFlows?: string[];
   identifiers?: IdentifierValue[];
   secrets?: string[];
@@ -68,7 +70,11 @@ export interface CheckResult {
 }
 
 const EMAIL = /[^\s@"'<>]+@[^\s@"'<>]+\.[A-Za-z]{2,}/;
-const PHONE = /(?<![0-9A-Za-z])(?:\+?91[\s-]*)?[6-9][0-9]{4}[\s-]?[0-9]{5}(?![0-9A-Za-z])/;
+/** Built from the app profile's pii.phonePattern; no profile pattern, no phone scan. */
+function phoneRegex(source: string | null | undefined): RegExp | null {
+  if (!source) return null;
+  try { return new RegExp(source); } catch { return null; }
+}
 /** HMAC / sha256 digests, optionally `sha256:`-prefixed or `#`-shortened — never user text. */
 const DIGEST = /^(?:sha256:|#)?[0-9a-f]{12,64}$/;
 
@@ -110,6 +116,7 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
     .map((i) => ({ name: i.name, re: i.digits ? new RegExp(i.digits.split('').join('[\\s-]*')) : new RegExp(escape(i.text!), 'i') }));
   const dummyFlows = opts.dummyFlows ?? readDummyFlows(opts.runDir);
   const inDummyFlow = (r: string) => dummyFlows.some((k) => r.startsWith(`${k}/`));
+  const PHONE = phoneRegex(opts.phonePattern);
   const files = walk(opts.runDir).filter((f) => path.basename(f) !== 'evidence-check.json');
   let steps = 0;
 
@@ -128,7 +135,7 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
       // Synthetic data on a dummy flow: still reported, never a blocker.
       const shape = inDummyFlow(r) ? 'warn' : 'error';
       if (EMAIL.test(s)) add('privacy-email', r, `email-shaped string${where}`, shape);
-      if (PHONE.test(s)) add('privacy-phone', r, `phone-shaped string${where}`, shape);
+      if (PHONE?.test(s)) add('privacy-phone', r, `phone-shaped string${where}`, shape);
     };
 
     if (ext === '.txt') { scan(text, ''); continue; }
@@ -222,6 +229,7 @@ if (require.main === module) {
       runDir,
       expectedDpr: env.browser.deviceScaleFactor,
       deviceDpr: deviceDprMap(),
+      phonePattern: profile.pii.phonePattern,
       requireFlows: (val('--require') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     });
     writeJson(path.join(runDir, 'evidence-check.json'), result);
