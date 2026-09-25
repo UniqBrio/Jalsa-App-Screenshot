@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
-import { spawnSync } from 'child_process';
+import { spawn } from 'child_process';
 import type { AddressInfo } from 'net';
 import { FIXTURE_APPS_DIR } from './helpers/sample-app';
 
@@ -138,14 +138,19 @@ function makeApp(o: { writeAllowedHosts?: string[]; flow?: string } = {}): strin
   return apps;
 }
 
-function runCapture(apps: string, env: Record<string, string>): { code: number; out: string } {
-  const r = spawnSync(process.execPath, ['-r', 'ts-node/register', 'src/runner.ts', '--app', 'sample-app', '--device', 'Mobile', '--force'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    env: { ...process.env, APPS_DIR: apps, APP: 'sample-app', HEADLESS: 'true', STEP_TIMEOUT_MS: '5000', RUNS_RETENTION_DAYS: '0', ...env },
-    timeout: 180_000,
+/** Async on purpose: the local app lives in THIS process and must keep answering while the runner drives it. */
+function runCapture(apps: string, env: Record<string, string>): Promise<{ code: number; out: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, ['-r', 'ts-node/register', 'src/runner.ts', '--app', 'sample-app', '--device', 'Mobile', '--force'], {
+      cwd: ROOT,
+      env: { ...process.env, APPS_DIR: apps, APP: 'sample-app', HEADLESS: 'true', STEP_TIMEOUT_MS: '5000', RUNS_RETENTION_DAYS: '0', ...env },
+    });
+    let out = '';
+    child.stdout.on('data', (d) => { out += d; });
+    child.stderr.on('data', (d) => { out += d; });
+    const timer = setTimeout(() => child.kill(), 180_000);
+    child.on('close', (code) => { clearTimeout(timer); resolve({ code: code ?? -1, out }); });
   });
-  return { code: r.status ?? -1, out: `${r.stdout}\n${r.stderr}` };
 }
 
 function reset(tenantId = TENANT.id): void {
@@ -169,9 +174,9 @@ after(() => {
 
 // ─── cases ───────────────────────────────────────────────────────────────────
 
-test('control: with every gate holding, the write happens and teardown deletes only the tagged record', () => {
+test('control: with every gate holding, the write happens and teardown deletes only the tagged record', async () => {
   reset();
-  const { code, out } = runCapture(makeApp(), { WRITE_MODE: 'dummy' });
+  const { code, out } = await runCapture(makeApp(), { WRITE_MODE: 'dummy' });
   assert.equal(code, 0, out);
   assert.equal(state.writes, 1, 'the harness can write — so a zero below is the gate');
   assert.equal(state.deletes, 1, 'teardown removed the tagged record');
@@ -179,33 +184,33 @@ test('control: with every gate holding, the write happens and teardown deletes o
   assert.match(out, /dummy identity verified/);
 });
 
-test('gate 1 — WRITE_MODE not "dummy": the write flow is skipped, nothing is written', () => {
+test('gate 1 — WRITE_MODE not "dummy": the write flow is skipped, nothing is written', async () => {
   for (const mode of ['', 'off', 'yes']) {
     reset();
-    const { code, out } = runCapture(makeApp(), { WRITE_MODE: mode });
+    const { code, out } = await runCapture(makeApp(), { WRITE_MODE: mode });
     assert.equal(code, 0, out);
     assert.match(out, /writes data and WRITE_MODE is not "dummy"/);
     assert.equal(state.writes, 0, `WRITE_MODE="${mode}"`);
   }
 });
 
-test('gate 2 — a flow without writes: true, or not auth: dummy, is refused before a browser opens', () => {
+test('gate 2 — a flow without writes: true, or not auth: dummy, is refused before a browser opens', async () => {
   const variants = {
     'no writes: true': WRITE_FLOW.replace('writes: true\n', ''),
     'auth: admin': WRITE_FLOW.replace('auth: dummy', 'auth: admin'),
   };
   for (const [label, flow] of Object.entries(variants)) {
     reset();
-    const { code, out } = runCapture(makeApp({ flow }), { WRITE_MODE: 'dummy' });
+    const { code, out } = await runCapture(makeApp({ flow }), { WRITE_MODE: 'dummy' });
     assert.equal(code, 1, `${label}: ${out}`);
     assert.match(out, /refusing to run/, label);
     assert.equal(state.writes, 0, label);
   }
 });
 
-test('gate 3 — the signed-in tenant is not the dummy tenant: the run aborts before the first action', () => {
+test('gate 3 — the signed-in tenant is not the dummy tenant: the run aborts before the first action', async () => {
   reset('real-tenant-7');
-  const { code, out } = runCapture(makeApp(), { WRITE_MODE: 'dummy' });
+  const { code, out } = await runCapture(makeApp(), { WRITE_MODE: 'dummy' });
   assert.equal(code, 1, out);
   assert.match(out, /DUMMY IDENTITY CHECK FAILED/);
   assert.match(out, /Run ABORTED/);
@@ -213,9 +218,9 @@ test('gate 3 — the signed-in tenant is not the dummy tenant: the run aborts be
   assert.equal(state.writes, 0);
 });
 
-test('gate 4 — the host is not in writeAllowedHosts: the run aborts before the first action', () => {
+test('gate 4 — the host is not in writeAllowedHosts: the run aborts before the first action', async () => {
   reset();
-  const { code, out } = runCapture(makeApp({ writeAllowedHosts: [] }), { WRITE_MODE: 'dummy' });
+  const { code, out } = await runCapture(makeApp({ writeAllowedHosts: [] }), { WRITE_MODE: 'dummy' });
   assert.equal(code, 1, out);
   assert.match(out, /WRITE GATES FAILED/);
   assert.match(out, /not in writeAllowedHosts/);
