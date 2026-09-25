@@ -1,0 +1,14 @@
+{
+  "_global": {
+    "flows": [],
+    "source_paths": [
+      "app/**"
+    ]
+  },
+  "zzfixture": {
+    "flows": [],
+    "source_paths": [
+      "app/**"
+    ]
+  }
+}

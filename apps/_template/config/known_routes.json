@@ -1,0 +1,7 @@
+{
+  "$comment": "Every route of the app, with the module that owns it. `npm run discover` taps the live navigation and adds anything new here (and drafts a flow for it). validate warns about routes no flow covers.",
+  "last_checked": "",
+  "routes": [
+    { "path": "/", "label": "Home", "tab": true, "module": "home" }
+  ]
+}

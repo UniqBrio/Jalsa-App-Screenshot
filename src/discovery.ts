@@ -5,27 +5,25 @@
  * a PURE STRUCTURAL diff (no LLM). Only genuinely new items cost an LLM call,
  * and only to propose a first-pass flow draft.
  *
- * RosiFit's navigation is not a list of links. The shell (src/components/
- * AppShell.tsx in the app repo) draws two structures, both as Pressables with
- * test ids rather than hrefs:
- *   · the academy header's underline row — nav-tab-overview, nav-tab-attendance
- *   · the floating pill — Home · Reports · More (role="tab", named; shell-nav-*
- *     test ids only on pushed screens)
- * plus the rows of the More screen (role="button", named "Branches, 1" etc.),
- * which are the way into every settings screen. So the crawl reads labels,
- * not hrefs, and maps each label to the route it opens by TAPPING it and
- * reading the URL back — never by guessing.
+ * Navigation is read from the places the app profile names
+ * (`discovery.navSources` in apps/<app-id>/app.config.json): each source is a
+ * route to open and a selector matching its navigation controls — a tab row,
+ * a nav bar of links, the rows of a settings screen. Many apps draw navigation
+ * as buttons or tabs with no href, so the crawl reads labels, not hrefs, and
+ * maps each label to the route it opens by TAPPING it and reading the URL
+ * back — never by guessing. Without a navSources entry, the tabs and nav links
+ * on '/' are read.
  *
- * Drafts land in flows/_drafts/ and are NEVER auto-promoted — you move a draft
- * into flows/ once you have reviewed it. known_routes.json is updated either
+ * Drafts land in apps/<app-id>/flows/_drafts/ and are NEVER auto-promoted —
+ * you move a draft into flows/ once you have reviewed it. known_routes.json is updated either
  * way, so a deferred draft doesn't re-flag every single day.
  *
- * Usage: npm run discover
+ * Usage: npm run discover -- --app <id>
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { Page } from '@playwright/test';
-import { env, paths, assertTargetEnvironment } from './env';
+import { env, paths, profile, sharedPaths, assertTargetEnvironment } from './env';
 import { readJson, writeJson, writeText, ensureDir, relPosix } from './fsx';
 import { log } from './logger';
 import { launchBrowser, settle } from './browser';
@@ -45,49 +43,39 @@ interface LiveNavItem {
 const NEVER_TAP = /sign out|delete|remove|send|upload|save|confirm/i;
 
 /**
- * Reads the shell's tab row and pill, then the More screen's rows, and taps
- * each once to learn where it goes. Structural only — no LLM anywhere here.
+ * Reads each configured navigation source and taps every control once to learn
+ * where it goes. Structural only — no LLM anywhere here.
  */
 async function scrapeNav(page: Page): Promise<LiveNavItem[]> {
   const seen = new Map<string, LiveNavItem>();
   const pathOf = () => new URL(page.url()).pathname;
 
-  const learn = async (selector: string, label: string, tab: boolean) => {
-    if (NEVER_TAP.test(label)) return;
-    const loc = page.locator(selector).first();
-    if (!(await loc.isVisible().catch(() => false))) return;
-    await loc.click({ timeout: 5_000 }).catch(() => undefined);
-    await settle(page, 600);
-    const routePath = pathOf();
-    if (routePath === '/') return;
-    if (!seen.has(routePath)) seen.set(routePath, { path: routePath, label, tab });
-  };
+  for (const source of profile.discovery.navSources) {
+    await page.goto(source.path, { waitUntil: 'domcontentloaded' });
+    await settle(page, 1_000);
+    const labels = await page
+      .locator(source.items)
+      .evaluateAll(
+        (els, attr) => els.map((el) => ((attr ? el.getAttribute(attr) : null) || el.getAttribute('aria-label') || el.textContent || '').trim()),
+        source.labelAttribute ?? null,
+      )
+      .catch(() => [] as string[]);
 
-  // 1. The academy header's underline tabs and the floating pill.
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await settle(page, 1_000);
-  const tabs = await page
-    .locator('[role="tablist"] [role="tab"]')
-    .evaluateAll((els) => els.map((el) => (el.getAttribute('aria-label') || el.textContent || '').trim()))
-    .catch(() => [] as string[]);
-  for (const label of tabs.filter(Boolean)) {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await settle(page, 600);
-    await learn(`role=tab[name="${label}"]`, label, true);
-  }
-
-  // 2. Every row on the More screen.
-  await page.goto('/more', { waitUntil: 'domcontentloaded' });
-  await settle(page, 1_000);
-  const rows = await page
-    .locator('[role="button"][aria-label]')
-    .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') || ''))
-    .catch(() => [] as string[]);
-  for (const label of rows.filter(Boolean)) {
-    const short = label.split(',')[0].split('.')[0].trim();
-    await page.goto('/more', { waitUntil: 'domcontentloaded' });
-    await settle(page, 600);
-    await learn(`role=button[name="${label}"]`, short, false);
+    for (const label of labels.filter(Boolean)) {
+      const short = source.labelCut
+        ? label.split(new RegExp(`[${source.labelCut.replace(/[\]\\^-]/g, '\\$&')}]`))[0].trim()
+        : label;
+      if (NEVER_TAP.test(short)) continue;
+      await page.goto(source.path, { waitUntil: 'domcontentloaded' });
+      await settle(page, 600);
+      const loc = page.locator(`role=${source.role}[name="${label.replace(/"/g, '\\"')}"]`).first();
+      if (!(await loc.isVisible().catch(() => false))) continue;
+      await loc.click({ timeout: 5_000 }).catch(() => undefined);
+      await settle(page, 600);
+      const routePath = pathOf();
+      if (routePath === source.path) continue;
+      if (!seen.has(routePath)) seen.set(routePath, { path: routePath, label: short, tab: source.tab });
+    }
   }
 
   return Array.from(seen.values());
@@ -103,14 +91,14 @@ async function proposeDraft(item: LiveNavItem, screenshotRel: string, domExcerpt
   const fallback = `# AUTO-GENERATED DRAFT — NOT ACTIVE.
 # Discovered on ${new Date().toISOString().slice(0, 10)} at route ${item.path}.
 # Review, correct every selector against the live app, then move this file to
-# flows/${moduleGuess}.${moduleGuess}-overview.yaml and add "${moduleGuess}" to
-# config/routes.map.json with real source_paths.
+# apps/${env.appId}/flows/${moduleGuess}.${moduleGuess}-overview.yaml and add
+# "${moduleGuess}" to apps/${env.appId}/config/routes.map.json with real source_paths.
 schema_version: 2
 module: ${moduleGuess}
 flow: ${moduleGuess}-overview
 title: ${item.label}
 description: TODO — discovered nav item "${item.label}"
-auth: admin
+auth: ${profile.defaultAccount}
 
 depends_on_routes:
   - ${item.path}
@@ -140,12 +128,10 @@ steps:
     ? fs.readFileSync(path.join(paths.root, screenshotRel)).toString('base64')
     : null;
 
-  const schema = fs.existsSync(path.join(paths.flows, '_SCHEMA.md'))
-    ? fs.readFileSync(path.join(paths.flows, '_SCHEMA.md'), 'utf8')
-    : '';
+  const schema = fs.existsSync(sharedPaths.flowSchema) ? fs.readFileSync(sharedPaths.flowSchema, 'utf8') : '';
 
   const answer = await askLlm(
-    `A new navigation item appeared in RosiFit, an attendance and follow-up web app for a fitness academy.\n\n` +
+    `A new navigation item appeared in ${profile.appName}. About the app: ${profile.appDescription}\n\n` +
       `Route: ${item.path}\nNav label: ${item.label}\nIs a tab: ${item.tab}\n\n` +
       `DOM excerpt of the screen (structural skeleton, truncated):\n<dom>\n${domExcerpt.slice(0, 6000)}\n</dom>\n\n` +
       `Flow manifest schema:\n<schema>\n${schema.slice(0, 4000)}\n</schema>\n\n` +
@@ -186,7 +172,7 @@ export async function runDiscovery(): Promise<{ newRoutes: KnownRoute[]; drafts:
   const drafts: string[] = [];
 
   try {
-    const ctx = await getAuthenticatedContext(browser, 'admin');
+    const ctx = await getAuthenticatedContext(browser, profile.defaultAccount);
     const page = await ctx.newPage();
 
     const live = await scrapeNav(page);
@@ -202,6 +188,7 @@ export async function runDiscovery(): Promise<{ newRoutes: KnownRoute[]; drafts:
       await settle(page, 800);
 
       const [shot] = await capture(page, {
+        root: path.join(paths.runs, '_discovery', new Date().toISOString().slice(0, 10)),
         module: '_discovered',
         flow: moduleGuess,
         stepId: '010-first-sight',

@@ -1,19 +1,22 @@
 /**
  * Offline validation — no browser, no network, no app repo required.
  *
- * Checks:
+ * Checks, for the selected app (--app <id> or APP=<id>):
+ *   · apps/<id>/app.config.json parses, and its login adapter is fully configured
  *   · every flow manifest parses and satisfies the schema
- *   · module/flow keys line up with config/routes.map.json
- *   · no step anywhere declares a write (this project is read-only)
+ *   · module/flow keys line up with the app's routes.map.json
+ *   · no real-account flow writes; dummy write flows meet the write contract
  *   · known_routes.json entries have flow coverage
  *   · the env safety gate would pass
  *
  * Run it before committing a manifest change, and as the first step of any CI
  * job — it turns a 3-minute failed capture run into a 200ms error message.
  *
- * Usage: npm run validate
+ * Usage: npm run validate -- --app <id>
  */
-import { paths, assertTargetEnvironment } from './env';
+import { paths, profile, envWarnings, assertTargetEnvironment } from './env';
+import { createLoginAdapter } from './login-adapters';
+import { isWriteFlow } from './write-gates';
 import { readJson } from './fsx';
 import { log } from './logger';
 import { loadFlows, allSteps, selectorPolicyViolation, scanDrafts } from './flow-loader';
@@ -21,12 +24,27 @@ import { inspectAppRepo } from './change-detector';
 import type { KnownRoutes, RoutesMap } from './types';
 
 export function validate(): number {
-  log.banner('Validating project configuration');
+  let appId: string;
+  try {
+    appId = profile.id;
+  } catch (err) {
+    log.error((err as Error).message);
+    return 1;
+  }
+  log.banner(`Validating app profile "${appId}"`);
+  envWarnings().forEach((w) => log.warn(w));
 
-  const { flows, errors, warnings } = loadFlows({ includeDisabled: true });
+  const adapterErrors = createLoginAdapter(profile).configErrors().map((e) => `apps/${appId}/app.config.json: ${e}`);
+  adapterErrors.forEach((e) => log.error(e));
+  if (!adapterErrors.length) {
+    log.ok(`Profile: ${profile.appName} · ${profile.loginAdapter.type} sign-in · accounts: ${Object.keys(profile.accounts).join(', ')} · framework: ${profile.framework}`);
+  }
+
+  const { flows, errors: flowErrors, warnings } = loadFlows({ includeDisabled: true });
+  const errors = [...adapterErrors, ...flowErrors];
 
   warnings.forEach((w) => log.warn(w));
-  errors.forEach((e) => log.error(e));
+  flowErrors.forEach((e) => log.error(e));
 
   log.info(`Loaded ${flows.length} flow manifest(s).`);
 
@@ -105,10 +123,18 @@ export function validate(): number {
     if (!sp.length) log.warn(`Module "${module}" has no source_paths — the git-diff skip filter can never skip it.`);
   }
 
-  // Read-only guarantee, at a glance. The hard error lives in loadFlows; this
-  // is the sentence a reviewer wants to see before trusting a run.
-  const typed = flows.flatMap((f) => allSteps(f)).filter((s) => s && (s.action === 'type' || s.action === 'fill'));
-  log.ok(`Read-only: ${flows.length} flow(s) declare no writes; ${typed.length} typed value(s), all run_tag: false.`);
+  // Write picture, at a glance. The hard errors live in loadFlows; this is the
+  // sentence a reviewer wants to see before trusting a run.
+  const writers = flows.filter(isWriteFlow);
+  const readers = flows.filter((f) => !isWriteFlow(f));
+  const typed = readers.flatMap((f) => allSteps(f)).filter((s) => s && (s.action === 'type' || s.action === 'fill'));
+  log.ok(`Read-only: ${readers.length} flow(s) declare no writes; ${typed.length} typed value(s), all run_tag: false.`);
+  if (writers.length) {
+    log.warn(
+      `Dummy write flows: ${writers.map((f) => `${f.module}/${f.flow}`).join(', ')} — they run only with ` +
+        `WRITE_MODE=dummy, a write-allowed host and a verified dummy tenant.`,
+    );
+  }
 
   // Environment gate + app repo reachability (informational, never fatal here).
   try {

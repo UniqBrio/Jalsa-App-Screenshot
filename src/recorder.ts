@@ -17,12 +17,12 @@
  *     element scrolls, with the correct target and scrollTop.
  *   · The init script re-installs itself across navigations.
  *
- * Usage: npm run record -- --flow students.add-student
+ * Usage: npm run record -- --app <id> --flow <module>.<flow> [--as <identity>] [--start /path]
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { Browser, BrowserContext, Page } from '@playwright/test';
-import { env, paths, assertTargetEnvironment } from './env';
+import { env, paths, profile, assertTargetEnvironment } from './env';
 import { writeJson, ensureDir, relPosix } from './fsx';
 import { log } from './logger';
 import { launchBrowser } from './browser';
@@ -38,7 +38,7 @@ import {
 
 // ─── "after" sampling (amendment B) ──────────────────────────────────────────
 // A fixed delay is a correctness bug, not a tuning choice: a slow route
-// transition on TEST reads back as url_after === url_before, the assertion is
+// transition reads back as url_after === url_before, the assertion is
 // silently dropped, and the flow looks correct while asserting nothing. So we
 // poll until the value stops moving, and record how the poll ended.
 const AFTER_POLL_MS = 100;
@@ -59,8 +59,8 @@ const AFTER_WATCH_MS = 5_000;
  */
 
 // ─── Redaction (amendment C) ─────────────────────────────────────────────────
-// recordings/ is committed, so an unredacted add-student recording would carry
-// a real name and a guardian phone number into git history permanently.
+// A recording can end up shared or committed, so an unredacted recording of a
+// form would carry a real name and phone number with it permanently.
 // Over-redaction costs one TODO to fill in; under-redaction cannot be undone.
 const REDACTED_INPUT_TYPES = new Set(['password', 'tel', 'email']);
 const EMAIL_SHAPE = /[^\s@]+@[^\s@]+\.[^\s@]{2,}/;
@@ -75,17 +75,15 @@ export function redactValue(
   if (inputType && REDACTED_INPUT_TYPES.has(inputType)) {
     return { value: null, redacted: true, reason: `input[type=${inputType}]` };
   }
-  if (env.admin.pin && value === env.admin.pin) {
-    return { value: null, redacted: true, reason: 'matches SIGNIN_PIN' };
-  }
-  if (env.staff.pin && value === env.staff.pin) {
-    return { value: null, redacted: true, reason: 'matches STAFF_PIN' };
-  }
-  if (env.admin.mobile && value.replace(/\D/g, '').includes(env.admin.mobile)) {
-    return { value: null, redacted: true, reason: 'matches SIGNIN_MOBILE' };
-  }
-  if (env.staff.mobile && value.replace(/\D/g, '').includes(env.staff.mobile)) {
-    return { value: null, redacted: true, reason: 'matches STAFF_MOBILE' };
+  for (const a of Object.values(env.accounts)) {
+    if (a.secret && value === a.secret) {
+      return { value: null, redacted: true, reason: `matches ${a.secretEnv}` };
+    }
+    const digits = a.user.replace(/\D/g, '');
+    const hit = /^\d+$/.test(a.user)
+      ? digits.length >= 5 && value.replace(/\D/g, '').includes(digits)
+      : a.user.length >= 3 && value.toLowerCase().includes(a.user.toLowerCase());
+    if (hit) return { value: null, redacted: true, reason: `matches ${a.userEnv}` };
   }
   if (EMAIL_SHAPE.test(value)) {
     return { value: null, redacted: true, reason: 'email shape' };
@@ -461,10 +459,14 @@ const val = (name: string, fallback: string): string => {
 async function main(): Promise<void> {
   const flow = val('flow', '');
   if (!flow) {
-    throw new Error('Usage: npm run record -- --flow <module>.<flow>   (e.g. students.add-student)');
+    throw new Error('Usage: npm run record -- --app <id> --flow <module>.<flow>   (e.g. settings.edit-profile)');
   }
   if (!/^[a-z0-9-]+\.[a-z0-9-]+$/.test(flow)) {
-    throw new Error(`--flow "${flow}" must be <module>.<flow> in kebab-case, e.g. students.add-student`);
+    throw new Error(`--flow "${flow}" must be <module>.<flow> in kebab-case, e.g. settings.edit-profile`);
+  }
+  const identity = val('as', profile.defaultAccount);
+  if (!profile.accounts[identity]) {
+    throw new Error(`--as "${identity}" is not one of the accounts in apps/${profile.id}/app.config.json (${Object.keys(profile.accounts).join(', ')})`);
   }
   const module = flow.split('.')[0];
 
@@ -493,13 +495,13 @@ async function main(): Promise<void> {
   try {
     // Authenticate FIRST. Anything src/login.ts does on a stale session must
     // not end up in the recording, so listeners go on afterwards.
-    const context = await getAuthenticatedContext(browser, 'admin');
+    const context = await getAuthenticatedContext(browser, identity);
     log.ok('Authenticated. Installing listeners — recording starts now.');
 
     const recorder = await installRecorder(context, {
       flow,
       module,
-      identity: 'admin',
+      identity,
       startUrl,
       viewport: { width: env.browser.width, height: env.browser.height },
     });

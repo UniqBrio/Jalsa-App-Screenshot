@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Page } from '@playwright/test';
 import { redactSecrets, identifierValues, secretValues, type IdentifierValue } from '../env';
+import { DUMMY_IDENTITY } from '../profile';
 import { ensureDir, writeJson, writeText } from '../fsx';
 import { waitForStable } from '../stability';
 import { domHash } from '../fingerprint';
@@ -326,6 +327,7 @@ export class EvidenceSink {
     const k = `${device.id}/${flow.module}/${flow.flow}`;
     const s = this.flows.get(k) ?? {
       device: device.id, module: flow.module, flow: flow.flow, status: 'running', steps: 0, pre_frames: 0, post_frames: 0, targets: 0, failed_steps: [], evidence_errors: 0,
+      ...(flow.auth === DUMMY_IDENTITY ? { dummy: true } : {}),
     };
     s.steps += 1;
     if (doc.before.frame) s.pre_frames += 1;
@@ -367,7 +369,7 @@ export class EvidenceSink {
     const lines = [
       '# Every text classified L (application label) in this evidence run, by route pattern.',
       '# Review before C2: nothing here may be a person, an email, a phone number or record data.',
-      '# Anything wrong → add a data_region (or remove the label) in config/pii-regions.json and re-run.',
+      '# Anything wrong → add a data_region (or remove the label) in the app\'s config/pii-regions.json and re-run.',
       '',
     ];
     for (const [pattern, bucket] of Array.from(this.labels.entries()).sort()) {

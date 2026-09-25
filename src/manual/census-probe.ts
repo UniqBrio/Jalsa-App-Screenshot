@@ -35,7 +35,7 @@ export interface RegionRule {
 }
 
 export interface ClassifyRules {
-  identifiers: Array<{ name: string; digits: string }>;
+  identifiers: Array<{ name: string; digits: string; text?: string }>;
   secrets: string[];
   safe_literals: string[];
   /** Pre-normalised (lower-case, whitespace collapsed). */
@@ -90,6 +90,8 @@ export function classifyTextRun(input: ClassifyInput, rules: ClassifyRules): { c
   // 2. operator identifiers — the full number in any spacing, or a fragment of it
   const digitRuns = collapsed.match(/[0-9](?:[0-9]|[ -](?=[0-9]))*/g) || [];
   for (const id of rules.identifiers) {
+    // An email/username login: matched literally, case-insensitively.
+    if (!id.digits && id.text && collapsed.toLowerCase().indexOf(id.text.toLowerCase()) !== -1) return { class: 'I', rule: 'identifier:' + id.name };
     if (!id.digits) continue;
     const full = new RegExp(id.digits.split('').join('[\\s-]*'));
     if (full.test(collapsed)) return { class: 'I', rule: 'identifier:' + id.name };

@@ -1,21 +1,27 @@
 /**
  * Orchestrator — the entry point for `npm run capture`.
  *
- * Order of operations:
- *   1. Safety gate (RosiFit host only)      — env.ts
- *   2. Load + validate every flow manifest  — flow-loader.ts  (fails fast)
- *   3. Inspect the app repo, compute diff   — change-detector.ts
- *   4. Authenticate once per identity       — login.ts
- *   5. Execute the flows that need running  — flow-executor.ts
- *   6. Persist baseline + last-run state
- *   7. Prune old runs/                      — retention policy
- *   8. Write the run summary
+ * The target app is chosen with --app <id> or APP=<id> (apps/<id>/); there is
+ * no default. Output goes to runs/<app-id>/<run-id>/<Device>/….
  *
- * There is no cleanup step. This project is READ-ONLY against the live app:
- * validate refuses any flow that declares a write, so there is never
- * anything to sweep.
+ * Order of operations:
+ *   1. Safety gate (profile's allowedHosts)   — env.ts
+ *   2. Load + validate every flow manifest    — flow-loader.ts  (fails fast)
+ *   3. Write gates for dummy write flows      — write-gates.ts  (aborts on mismatch)
+ *   4. Inspect the app repo, compute diff     — change-detector.ts
+ *   5. Authenticate once per identity; the dummy tenant is verified before
+ *      the first flow acts                    — login.ts
+ *   6. Execute the flows that need running    — flow-executor.ts
+ *   7. Persist baseline + last-run state
+ *   8. Prune old runs                         — retention policy
+ *   9. Write the run summary
+ *
+ * Real accounts are READ-ONLY: validate refuses a write in any flow that is
+ * not an explicit dummy write flow, and those run only when every write gate
+ * holds. A dummy write flow's own teardown removes what it tagged.
  *
  * Flags:
+ *   --app <id>           the app profile to capture (or APP=<id>)
  *   --force              run every flow, ignoring the git-diff skip filter
  *   --module <name>      restrict to one module (repeatable)
  *   --flow <mod/flow>    restrict to one flow (repeatable)
@@ -29,13 +35,15 @@
  */
 import * as path from 'path';
 import { Browser, BrowserContext } from '@playwright/test';
-import { env, paths, appHost, assertTargetEnvironment } from './env';
+import { env, paths, profile, appHost, assertTargetEnvironment, envWarnings, isDummyIdentity } from './env';
 import { readJson, writeJson, relPosix } from './fsx';
 import { log } from './logger';
 import { loadFlows } from './flow-loader';
 import { launchBrowser, newContext } from './browser';
 import { loadDevicesConfig, resolveDevices, devicesForFlow, type DeviceProfile } from './devices';
 import { getAuthenticatedContext, authPreflight, Identity } from './login';
+import { isWriteFlow, messagingBlock, staticWriteGateProblems, DummyIdentityError } from './write-gates';
+import { NO_AUTH } from './profile';
 import { executeFlow } from './flow-executor';
 import { loadBaseline, saveBaseline } from './fingerprint';
 import { ChangeDetector, inspectAppRepo, loadLastRun, saveLastRun } from './change-detector';
@@ -67,7 +75,7 @@ export function parseArgs(argv: string[]): Args {
       case '--dry-run': a.dryRun = true; break;
       case '--update-baseline': a.updateBaseline = true; break;
       case '--headed': a.headed = true; break;
-      case '--no-cleanup': log.warn('--no-cleanup is meaningless here — this project never writes, so it never cleans up.'); break;
+      case '--app': i++; break; // read by env.ts (selectedAppId)
       case '--module': a.modules.push(argv[++i]); break;
       case '--flow': a.flows.push(argv[++i]); break;
       case '--device': a.devices.push(argv[++i]); break;
@@ -84,9 +92,14 @@ function makeRunId(): string {
   return new Date().toISOString().replace(/:/g, '-').replace(/\.\d+Z$/, 'Z');
 }
 
+/** Run-scoped marker carried by every record a dummy write flow creates. */
+export function runTagFor(runId: string): string {
+  return `SCRSHOT_${runId}_`;
+}
+
 /** The identity a flow signs in as. `none` means a fresh signed-out context. */
-function identityOf(flow: Flow): Identity | 'none' {
-  return flow.auth ?? 'admin';
+function identityOf(flow: Flow): Identity {
+  return flow.auth ?? profile.defaultAccount;
 }
 
 /**
@@ -103,7 +116,7 @@ class Contexts {
 
   async for(flow: Flow, device: DeviceProfile): Promise<{ context: BrowserContext; ephemeral: boolean }> {
     const identity = identityOf(flow);
-    if (identity === 'none') return { context: await newContext(this.browser, undefined, device), ephemeral: true };
+    if (identity === NO_AUTH) return { context: await newContext(this.browser, undefined, device), ephemeral: true };
     const key = `${identity}@${device.id}`;
     let ctx = this.shared.get(key);
     if (!ctx) {
@@ -126,7 +139,10 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const runId = makeRunId();
   const startedAt = new Date();
 
-  log.banner(`RosiFit ${args.evidence ? 'EVIDENCE' : 'screenshot'} capture — run ${runId}`);
+  // Resolves the app profile first: no app selected is an error, never a default.
+  const appId = profile.id;
+  log.banner(`${args.evidence ? 'EVIDENCE' : 'Screenshot'} capture of the target app "${appId}" — run ${runId}`);
+  envWarnings().forEach((w) => log.warn(w));
 
   if (args.evidence && (args.dryRun || args.updateBaseline)) {
     log.error('--evidence cannot be combined with --dry-run or --update-baseline: an evidence run never touches the baseline.');
@@ -135,7 +151,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   // ── 1. Safety gate ─────────────────────────────────────────────────────────
   assertTargetEnvironment();
-  log.ok(`Target: ${env.appUrl}  (read-only)`);
+  log.ok(`Target: ${env.appName} at ${env.appUrl}  (write mode: ${env.writeMode === 'dummy' ? 'DUMMY — dummy write flows may write' : 'off — read-only'})`);
 
   // ── 2. Flow manifests ──────────────────────────────────────────────────────
   let selectedDevices: DeviceProfile[];
@@ -166,13 +182,45 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   // An identity whose credentials are missing takes its flows out of the run
   // with a reason, rather than failing them one by one at sign-in.
   const unavailable = new Map<Identity, string>();
-  for (const identity of ['admin', 'staff'] as Identity[]) {
+  for (const identity of new Set(flows.map(identityOf))) {
+    if (identity === NO_AUTH) continue;
     const problem = authPreflight(identity);
-    if (problem && flows.some((f) => identityOf(f) === identity)) unavailable.set(identity, problem);
+    if (problem) unavailable.set(identity, problem);
   }
-  const skippedForAuth = flows.filter((f) => unavailable.has(identityOf(f) as Identity));
-  skippedForAuth.forEach((f) => log.skip(`${f.module}/${f.flow} — ${unavailable.get(identityOf(f) as Identity)}`));
-  flows = flows.filter((f) => !unavailable.has(identityOf(f) as Identity));
+  const skippedForAuth = flows.filter((f) => unavailable.has(identityOf(f)));
+  skippedForAuth.forEach((f) => log.skip(`${f.module}/${f.flow} — ${unavailable.get(identityOf(f))}`));
+  flows = flows.filter((f) => !unavailable.has(identityOf(f)));
+
+  // ── Write gates ────────────────────────────────────────────────────────────
+  // WRITE_MODE off: write flows are simply not run. On: every gate must hold
+  // for every selected write flow, or nothing runs at all.
+  const flagged: RunSummary['flagged'] = [];
+  const skippedForWrites: Flow[] = [];
+  const writeFlows = flows.filter(isWriteFlow);
+  if (writeFlows.length && env.writeMode !== 'dummy') {
+    for (const f of writeFlows) {
+      log.skip(`${f.module}/${f.flow} — writes data and WRITE_MODE is not "dummy"`);
+      skippedForWrites.push(f);
+    }
+  } else if (writeFlows.length) {
+    for (const f of writeFlows) {
+      const why = messagingBlock(f, profile);
+      if (why) {
+        log.warn(`FLAGGED ${f.module}/${f.flow} — ${why}`);
+        flagged.push({ module: f.module, flow: f.flow, reason: why });
+        skippedForWrites.push(f);
+      }
+    }
+    const problems = writeFlows
+      .filter((f) => !skippedForWrites.includes(f))
+      .flatMap((f) => staticWriteGateProblems(f, { writeMode: env.writeMode, host: appHost(), writeAllowedHosts: env.writeAllowedHosts, profile }));
+    if (problems.length) {
+      log.error(`WRITE GATES FAILED — aborting before any action:`);
+      problems.forEach((p) => log.error(`  ${p}`));
+      return 1;
+    }
+  }
+  flows = flows.filter((f) => !skippedForWrites.includes(f));
 
   if (!flows.length) {
     log.warn('No flows selected. Nothing to do.');
@@ -228,11 +276,30 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const baseline = loadBaseline();
   const results: FlowRun[] = [];
 
+  const runTag = runTagFor(runId);
+  // Real runs: runs/<app>/<run-id>/. Dry runs land apart, so they can never be
+  // mistaken for (or overwrite) a real capture.
+  const runDir = args.dryRun ? path.join(paths.runs, '.dry-run', runId) : path.join(paths.runs, runId);
+  let aborted: string | null = null;
+
   if (toRun.length) {
     const browser = args.dryRun ? null : await launchBrowser();
     const contexts = browser ? new Contexts(browser) : null;
     try {
-      for (const device of selectedDevices) {
+      // The dummy tenant is verified BEFORE the first flow acts: sign in as the
+      // dummy account on the first device now, so a mismatch aborts a run that
+      // has not touched anything yet. Later devices re-verify on their own
+      // context; a mismatch there stops the run too.
+      const dummyFlow = toRun.find((d) => isDummyIdentity(identityOf(d.flow)));
+      if (contexts && dummyFlow) {
+        const first = selectedDevices.find((d) => devicesForFlow([d], dummyFlow.flow.devices).length);
+        if (first) {
+          log.info('Verifying the dummy account before any flow runs…');
+          await contexts.for(dummyFlow.flow, first);
+        }
+      }
+
+      outer: for (const device of selectedDevices) {
         for (const { flow, reason } of toRun) {
           // A flow may declare which form factors it makes sense on.
           if (!devicesForFlow([device], flow.devices).length) {
@@ -251,6 +318,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
             }
             const run = await executeFlow(context!, flow, {
               runId,
+              runDir,
+              runTag,
+              // Reaching here means every write gate held (static ones above,
+              // the tenant check when the dummy context was created).
+              writeAllowed: isWriteFlow(flow) && env.writeMode === 'dummy' && isDummyIdentity(identityOf(flow)),
               device,
               appGitSha: repo.headSha,
               baseline,
@@ -263,6 +335,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
             const icon = run.status === 'failed' ? log.error : run.status === 'changed' ? log.warn : log.ok;
             icon(`${device.id} · ${flow.module}/${flow.flow} → ${run.status} (${run.screenshots.length} screenshot(s), ${run.duration_ms}ms)`);
           } catch (err) {
+            if (err instanceof DummyIdentityError) {
+              aborted = err.message;
+              log.error(err.message);
+              break outer;
+            }
             log.error(`${device.id} · ${flow.module}/${flow.flow} crashed: ${(err as Error).message}`);
             results.push({
               module: flow.module, flow: flow.flow, device: device.id, run_id: runId, app_git_sha: repo.headSha,
@@ -274,10 +351,18 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           }
         }
       }
+    } catch (err) {
+      if (!(err instanceof DummyIdentityError)) throw err;
+      aborted = err.message;
+      log.error(err.message);
     } finally {
       await contexts?.closeAll();
       await browser?.close();
     }
+  }
+  if (aborted) {
+    log.error('Run ABORTED by the dummy identity check. Baseline and last-run state were not touched.');
+    return 1;
   }
 
   // ── 6. Persist state ───────────────────────────────────────────────────────
@@ -310,30 +395,28 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   const finishedAt = new Date();
   const summary: RunSummary = {
     run_id: runId,
+    app_id: appId,
     started_at: startedAt.toISOString(),
     finished_at: finishedAt.toISOString(),
     app_git_sha: repo.headSha,
     app_repo_available: repo.available,
     env: { app_url: env.appUrl, app_host: appHost() },
+    write_mode: writeFlows.length && env.writeMode === 'dummy' ? 'dummy' : 'off',
+    run_tag: runTag,
     devices: selectedDevices.map((d) => d.id),
     totals: {
       flows_total: flows.length * selectedDevices.length,
       flows_run: results.length,
-      flows_skipped: skipped.length + skippedForAuth.length,
+      flows_skipped: skipped.length + skippedForAuth.length + skippedForWrites.length,
       flows_failed: results.filter((r) => r.status === 'failed').length,
       flows_changed: results.filter((r) => r.status === 'changed' || r.status === 'new').length,
       screenshots: results.reduce((n, r) => n + r.screenshots.length, 0),
     },
     flows: results.map((r) => ({ module: r.module, flow: r.flow, device: r.device, status: r.status, reason: r.reason, duration_ms: r.duration_ms })),
+    flagged,
   };
 
-  // Dry-run summaries land alongside the per-flow dry-run manifests, never
-  // overwriting a real run's summary.
-  const summaryPath = sink
-    ? path.join(sink.root, 'run-summary.json')
-    : args.dryRun
-      ? path.join(paths.runs, runId.slice(0, 10), '.dry-run', 'run-summary.json')
-      : path.join(paths.runs, runId.slice(0, 10), 'run-summary.json');
+  const summaryPath = sink ? path.join(sink.root, 'run-summary.json') : path.join(runDir, 'run-summary.json');
   if (sink) {
     const ev = sink.finish(summary);
     log.info(`  evidence:    ${ev.flows.reduce((n, f) => n + f.pre_frames + f.post_frames, 0)} frame(s), census ${JSON.stringify(ev.census_by_class)}`);
@@ -347,6 +430,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   log.info(`  flows:       ${summary.totals.flows_run} run · ${summary.totals.flows_skipped} skipped · ${summary.totals.flows_failed} failed`);
   log.info(`  changed:     ${summary.totals.flows_changed}`);
   log.info(`  screenshots: ${summary.totals.screenshots}`);
+  if (flagged.length) log.warn(`  flagged:     ${flagged.length} flow(s) skipped for safety — see "flagged" in the summary`);
   log.info(`  summary:     ${relPosix(paths.root, summaryPath)}`);
 
   if (summary.totals.flows_changed > 0 && !args.evidence) {

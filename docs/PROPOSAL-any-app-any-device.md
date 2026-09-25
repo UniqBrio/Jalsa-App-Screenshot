@@ -1,5 +1,14 @@
 # Proposal — capture every page of an app you own, on the device types you choose
 
+> **Historical document.** Written when this engine captured a single app,
+> RosiFit, which serves below as the worked example ("the first app"). Its
+> Phase A (device profiles), the app-profile and login-adapter parts of
+> Phase B, and Phase C (dummy-account writes) have since been implemented —
+> decisions 3-5 were answered as: separate dummy tenant; one repo capturing
+> several apps via `apps/<app-id>/`; email-password, username-password and
+> mobile-pin adapters. See the README for the current design. Line references
+> into `src/` below point at the code as it was then.
+
 Status: **proposal only. No code has been changed.** This exists to be reviewed
 and decided on first.
 
@@ -28,7 +37,7 @@ Concrete evidence from the app in front of us:
 
 | | Count | Source |
 |---|---|---|
-| Route files in the app repo (`app/**`, expo-router) | **31** | `C:\Business\Rosifit\app` |
+| Route files in the app repo (`app/**`, expo-router) | **31** | the first app's repo clone |
 | Routes listed in `config/known_routes.json` | **20** | hand-derived once, dated 2026-09-12 |
 | Routes never listed | at least 10 | `/register`, `/change-mobile`, `/holiday`, `/course/edit`, `/member/edit`, `/member/import`, `/offering/edit`, `/send/result`, `/staff/pin`, `/set-pin` |
 
@@ -40,7 +49,7 @@ captured", so a missing page is silent.
 
 The other blockers for onboarding *your* app:
 
-- **Sign-in is hard-coded** to RosiFit's mobile + 4-digit PIN screen, with fixed
+- **Sign-in is hard-coded** to the first app's mobile + 4-digit PIN screen, with fixed
   selectors ([login.ts:32-39](../src/login.ts#L32-L39)). Your app's login will not match.
 - **App identity is hard-coded** — locale `en-IN`, timezone `Asia/Kolkata`,
   interstitial selectors, discovery selectors, doc prose, and the PII pattern for
@@ -206,7 +215,7 @@ Output keeps today's shape (`path`, `label`, `module`) and adds
 `source_file`, `dynamic: true|false` and `first_seen`. Unknown-framework projects
 fall back to listing routes by hand — same file, no new concept.
 
-Applied to RosiFit today this would immediately surface the ~10 pages the
+Applied to the first app today this would immediately surface the ~10 pages the
 inventory has never mentioned.
 
 ### 3.2 A page-coverage report — the actual answer to "all pages?"
@@ -251,7 +260,7 @@ and the auth adapter:
   by hand, the session is saved to `.auth/<app>-<identity>.json`, runs reuse it.
   No app-specific selectors; works with SSO, OTP and MFA.
 - `form` — selectors plus secret env names, declared in config (email/password).
-- `mobile-pin` — today's RosiFit behaviour, kept as one adapter.
+- `mobile-pin` — the first app's behaviour, kept as one adapter.
 - `none` — signed-out capture.
 
 Per-role identities (`admin`, `staff`, …) so role-gated pages are reachable.
@@ -287,12 +296,12 @@ re-opens that door for one account only.
 
 ### 4.1 First, a question I need answered (§7, decision 3)
 
-**Is the dummy account a separate tenant/academy, or another user inside the real
-academy?**
+**Is the dummy account a separate tenant, or another user inside the real
+tenant?**
 
 - **Separate tenant (strongly preferred).** Its writes are invisible to real users.
   Everything below is safe.
-- **A user inside the real academy.** Then a dummy course or member created by a
+- **A user inside the real tenant.** Then a dummy course or member created by a
   capture run is **visible to real staff, counts in real reports, and may trigger
   real follow-up emails**. I would not enable writes in that arrangement — the
   blast radius is the customer's live data.
@@ -398,8 +407,8 @@ passing.
 
 **Still open**
 
-3. **Dummy account isolation** — separate tenant/academy, or a user inside the
-   real academy? *(§4.1 — this gates whether Phase C is safe to build at all.)*
+3. **Dummy account isolation** — separate tenant, or a user inside the
+   real tenant? *(§4.1 — this gates whether Phase C is safe to build at all.)*
 4. **One repo per app (fork), or one repo capturing several apps** via
    `apps/<app-id>/…`? Phase B works either way.
 5. **Which sign-in schemes** must be supported beyond hand-seeded sessions?

@@ -1,10 +1,10 @@
 /**
- * A synthetic, offline stand-in for the RosiFit slice (sign in → courses →
- * course roster → member), served to Playwright by request interception at
+ * "Sample App": a synthetic, offline app (sign in → courses → course roster →
+ * member), served to Playwright by request interception at
  * https://fixture.test — no network, no live account.
  *
- * It reuses the real app's test ids for the slice screens so the committed
- * config/pii-regions.json is exercised as-is, and it deliberately contains
+ * Its test ids match the Sample App fixture profile
+ * (fixtures/apps/sample-app/config/pii-regions.json), and it deliberately contains
  * every hazard the classifier must handle: a member list, an email, the
  * operator's number echoed on screen, a PIN field, a record-screen heading that
  * is a person's name, an app placeholder that looks like a name, and a fixed
@@ -76,7 +76,7 @@ function pin(): string {
 
 function courses(): string {
   return shell(
-    `<header data-testid="shell-academy">Fixture Academy</header>
+    `<header data-testid="shell-org" data-tenant-id="sample-tenant-0001">Sample Org (test)</header>
      <nav role="tablist">
        <button role="tab" data-testid="nav-tab-overview">Overview</button>
        <button role="tab" aria-selected="true" data-testid="nav-tab-attendance">Attendance</button>

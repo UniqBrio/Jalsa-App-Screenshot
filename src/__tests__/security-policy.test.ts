@@ -13,18 +13,17 @@ import assert from 'node:assert/strict';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// node --test runs each file in its own process, so these land before env.ts
-// (and dotenv, which never overrides an existing variable) is first loaded.
-process.env.SIGNIN_MOBILE = '9000048261';
-process.env.SIGNIN_PIN = '4826';
-process.env.STAFF_MOBILE = '+91 80000 11112';
-process.env.STAFF_PIN = '1357';
+import { useSampleApp } from './helpers/sample-app';
+
+// Credentials live in the selected app's own .env — the Sample App's, here.
+useSampleApp({ SIGNIN_MOBILE: '9000048261', SIGNIN_PIN: '4826', STAFF_MOBILE: '+91 80000 11112', STAFF_PIN: '1357' });
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const envMod = require('../env') as typeof import('../env');
 const { redactValues, redactSecrets, identifierValues, secretValues, ROOT } = envMod;
 
 const ADMIN = { name: 'SIGNIN_MOBILE', digits: '9000048261' };
+const CC = '91';
 
 // ─── redactValues (pure) ─────────────────────────────────────────────────────
 
@@ -36,11 +35,11 @@ test('redacts the spaced form the sign-in field renders', () => {
   assert.equal(redactValues('No account for 90000 48261', [], [ADMIN]), 'No account for «redacted:SIGNIN_MOBILE»');
 });
 
-test('redacts +91, 91 and 0 prefixed and hyphenated forms, prefix included', () => {
-  assert.equal(redactValues('+91 90000 48261', [], [ADMIN]), '«redacted:SIGNIN_MOBILE»');
-  assert.equal(redactValues('919000048261', [], [ADMIN]), '«redacted:SIGNIN_MOBILE»');
-  assert.equal(redactValues('09000048261', [], [ADMIN]), '«redacted:SIGNIN_MOBILE»');
-  assert.equal(redactValues('90000-48261', [], [ADMIN]), '«redacted:SIGNIN_MOBILE»');
+test('redacts +<cc>, <cc> and 0 prefixed and hyphenated forms, prefix included', () => {
+  assert.equal(redactValues('+91 90000 48261', [], [ADMIN], CC), '«redacted:SIGNIN_MOBILE»');
+  assert.equal(redactValues('919000048261', [], [ADMIN], CC), '«redacted:SIGNIN_MOBILE»');
+  assert.equal(redactValues('09000048261', [], [ADMIN], CC), '«redacted:SIGNIN_MOBILE»');
+  assert.equal(redactValues('90000-48261', [], [ADMIN], CC), '«redacted:SIGNIN_MOBILE»');
 });
 
 test('redacts the PIN with the existing «redacted» marker', () => {
@@ -65,7 +64,12 @@ test('text without sensitive values is unchanged', () => {
 
 // ─── env wiring ──────────────────────────────────────────────────────────────
 
-test('identifierValues and secretValues come from the environment', () => {
+test('an email/username login is redacted literally and case-insensitively', () => {
+  const EMAIL = { name: 'ADMIN_EMAIL', digits: '', text: 'ops@example.com' };
+  assert.equal(redactValues('signed in as OPS@example.com', [], [EMAIL]), 'signed in as «redacted:ADMIN_EMAIL»');
+});
+
+test('identifierValues and secretValues come from the app .env', () => {
   assert.deepEqual(identifierValues(), [
     { name: 'SIGNIN_MOBILE', digits: '9000048261' },
     { name: 'STAFF_MOBILE', digits: '8000011112' },
@@ -101,18 +105,39 @@ test('log lines are redacted before they reach the console', () => {
   assert.match(all, /«redacted»/);
 });
 
+test('a credential set in the shell or the root .env is ignored, and said so', () => {
+  process.env.SIGNIN_PIN = '9999';
+  useSampleApp({ SIGNIN_MOBILE: '9000048261', SIGNIN_PIN: '4826' });
+  try {
+    assert.deepEqual(secretValues(), ['4826']);
+    assert.ok(envMod.envWarnings().some((w) => w.startsWith('SIGNIN_PIN is set outside')));
+  } finally {
+    delete process.env.SIGNIN_PIN;
+    useSampleApp({ SIGNIN_MOBILE: '9000048261', SIGNIN_PIN: '4826', STAFF_MOBILE: '+91 80000 11112', STAFF_PIN: '1357' });
+  }
+});
+
 // ─── committed files ─────────────────────────────────────────────────────────
 
-const SENSITIVE_KEYS = ['SIGNIN_MOBILE', 'SIGNIN_PIN', 'STAFF_MOBILE', 'STAFF_PIN', 'ANTHROPIC_API_KEY'];
+/** A line `KEY=value` whose key names a credential, a secret or an API key. */
+const SENSITIVE_KEY = /(PIN|PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|MOBILE|PHONE|EMAIL|USERNAME)$/;
 
-test('.env.example carries placeholders only for credentials and identifiers', () => {
-  const text = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
-  for (const key of SENSITIVE_KEYS) {
+for (const example of ['.env.example', 'apps/_template/.env.example']) {
+  test(`${example} carries placeholders only for credentials and identifiers`, () => {
+    const text = fs.readFileSync(path.join(ROOT, example), 'utf8');
     for (const line of text.split(/\r?\n/)) {
-      const m = line.match(new RegExp(`^\\s*#?\\s*${key}=(.*)$`));
-      if (!m) continue;
-      assert.equal(m[1].trim(), '', `.env.example ${key} must be empty — real values belong in .env only`);
+      const m = line.match(/^\s*#?\s*([A-Z][A-Z0-9_]*)=(.*)$/);
+      if (!m || !SENSITIVE_KEY.test(m[1])) continue;
+      assert.equal(m[2].trim(), '', `${example} ${m[1]} must be empty — real values belong in apps/<app-id>/.env only`);
     }
+  });
+}
+
+test('the root .env.example holds no credential variables at all', () => {
+  const text = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*#?\s*([A-Z][A-Z0-9_]*)=/);
+    if (m && m[1] !== 'ANTHROPIC_API_KEY') assert.doesNotMatch(m[1], SENSITIVE_KEY, `root .env.example declares ${m[1]} — credentials go in apps/<app-id>/.env`);
   }
 });
 
@@ -139,10 +164,41 @@ function textFilesUnder(dir: string): string[] {
   return out;
 }
 
-test('committed run manifests, docs and recordings contain no mobile-shaped number', () => {
-  for (const file of ['runs', 'docs', 'recordings'].flatMap(textFilesUnder)) {
+test('committed docs, flows and the template profile contain no mobile-shaped number', () => {
+  for (const file of ['docs', 'flows', 'apps/_template'].flatMap(textFilesUnder)) {
     const m = fs.readFileSync(file, 'utf8').match(MOBILE_SHAPE);
     // Report the file, never the match — the match may be real personal data.
     assert.equal(m, null, `mobile-shaped number in ${path.relative(ROOT, file)}`);
+  }
+});
+
+// ─── app-agnostic core ───────────────────────────────────────────────────────
+
+test('no tracked file outside docs/ names a local app profile or its hosts', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { execFileSync } = require('child_process') as typeof import('child_process');
+  const appsRoot = path.join(ROOT, 'apps');
+  if (!fs.existsSync(appsRoot)) return;
+  const needles = new Set<string>();
+  for (const id of fs.readdirSync(appsRoot)) {
+    const cfg = path.join(appsRoot, id, 'app.config.json');
+    if (id === '_template' || !fs.existsSync(cfg)) continue;
+    const c = JSON.parse(fs.readFileSync(cfg, 'utf8')) as { appName?: string; allowedHosts?: string[] };
+    if (c.appName && c.appName.length >= 4) needles.add(c.appName.toLowerCase());
+    for (const h of c.allowedHosts ?? []) if (!['localhost', '127.0.0.1'].includes(h)) needles.add(h.toLowerCase());
+  }
+  if (!needles.size) return;
+  let tracked: string[];
+  try {
+    tracked = execFileSync('git', ['-C', ROOT, 'ls-files'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  } catch {
+    return; // not a git checkout
+  }
+  for (const rel of tracked) {
+    if (rel.startsWith('docs/') || /\.(png|zip|jpe?g)$/i.test(rel)) continue;
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) continue;
+    const text = fs.readFileSync(abs, 'utf8').toLowerCase();
+    for (const n of needles) assert.equal(text.includes(n), false, `${rel} mentions a local app profile ("${n}") — app details belong in apps/<app-id>/`);
   }
 });

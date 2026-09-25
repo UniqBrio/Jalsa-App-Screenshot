@@ -181,6 +181,12 @@ export interface EvidenceFlowSummary {
   targets: number;
   failed_steps: string[];
   evidence_errors: number;
+  /**
+   * Captured signed in as the dummy account (synthetic data in a test tenant).
+   * The evidence check reports email/phone shapes in its files as warnings
+   * instead of errors. Credentials stay errors everywhere.
+   */
+  dummy?: boolean;
 }
 
 export interface EvidenceRunSummary {

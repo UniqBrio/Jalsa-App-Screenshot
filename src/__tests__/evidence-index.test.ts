@@ -14,10 +14,9 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-process.env.SIGNIN_MOBILE = '9000048261';
-process.env.SIGNIN_PIN = '4826';
-process.env.STAFF_MOBILE = '';
-process.env.STAFF_PIN = '';
+import { useSampleApp } from './helpers/sample-app';
+
+useSampleApp({ SIGNIN_MOBILE: '9000048261', SIGNIN_PIN: '4826' });
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const idx = require('../manual/evidence-index') as typeof import('../manual/evidence-index');
@@ -118,7 +117,7 @@ function stepDoc(o: {
   before?: PhaseEvidence; after?: PhaseEvidence; target?: boolean; occluded?: number; errors?: string[];
 }): StepEvidence {
   return {
-    schema: 1, run_id: RUN_ID, module: o.module, flow: o.flow, step_id: o.stepId,
+    schema: 2, run_id: RUN_ID, device: 'Mobile', module: o.module, flow: o.flow, step_id: o.stepId,
     phase: 'steps', action: o.action ?? 'click', input: null,
     target: o.target === false ? null : {
       testid: 'ctl', testid_family: 'ctl', role: 'button', tag: 'button', input_type: null,
@@ -150,7 +149,7 @@ function stepResult(o: Partial<StepResult> & { id: string }): StepResult {
 
 function flowRun(runDir: string, module: string, flow: string, steps: StepResult[], status: FlowRun['status'] = 'unchanged'): void {
   const run: FlowRun = {
-    module, flow, run_id: RUN_ID, app_git_sha: 'abc123', status, reason: 'forced',
+    module, flow, device: 'Mobile', run_id: RUN_ID, app_git_sha: 'abc123', status, reason: 'forced',
     started_at: '2026-09-15T00:00:00.000Z', duration_ms: 10, steps,
     screenshots: steps.flatMap((s) => s.screenshot_paths), errors: [],
   };
@@ -594,7 +593,7 @@ test('review item config is validated', () => {
   assert.throws(() => idx.parseReviewItems({}), /items/);
 });
 
-test('the committed config/manual-review-items.json loads', () => {
+test('the Sample App manual-review-items.json loads', () => {
   const loaded = idx.loadReviewItems();
   assert.ok(loaded.items.length >= 1);
   assert.ok(loaded.items.every((i) => i.id && i.question));

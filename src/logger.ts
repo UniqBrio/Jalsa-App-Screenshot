@@ -3,7 +3,7 @@
  *
  * Every line passes through redactSecrets here, once, rather than at each call
  * site: log output ends up in CI logs and pasted bug reports, and a login error
- * that quotes page text ("No account for +91 …") must not carry the operator's
+ * that quotes page text ("No account for +1 …") must not carry the operator's
  * number with it just because that call site forgot.
  */
 import { redactSecrets } from './env';

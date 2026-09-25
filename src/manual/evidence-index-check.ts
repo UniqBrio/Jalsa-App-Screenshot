@@ -66,7 +66,7 @@ export interface IndexCheckResult {
 
 export interface IndexCheckOptions extends BuildOptions {
   /** Passed through to the C1 privacy scan. */
-  identifiers?: Array<{ name: string; digits: string }>;
+  identifiers?: Array<{ name: string; digits: string; text?: string }>;
   secrets?: string[];
 }
 

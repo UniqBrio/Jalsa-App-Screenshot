@@ -10,7 +10,7 @@
  * The diff is a small in-repo LCS rather than a dependency or a shell-out to
  * `git diff --no-index`, which would need temp files and a git binary.
  *
- * Usage: npm run record:diff -- --flow students.add-student
+ * Usage: npm run record:diff -- --flow settings.edit-profile
  */
 import * as fs from 'fs';
 import { paths } from './env';

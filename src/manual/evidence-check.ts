@@ -6,7 +6,10 @@
  * Structure    every *.evidence.json validates against the schema (evidence-types.ts)
  * Privacy      no secret or operator identifier value appears in ANY file (text, JSON, or a file
  *              name), no email/phone-shaped string appears in any JSON or text file, raw text
- *              exists only on class L entries (enforced by the schema validator)
+ *              exists only on class L entries (enforced by the schema validator). In a flow
+ *              captured as the dummy account the data is synthetic, so an email/phone shape
+ *              there is a warning, not a failure — secrets and identifiers stay errors.
+ * Usage        npm run evidence:check -- --app <id> --run <run_id>
  * Frames       every referenced PNG exists, its IHDR size matches the record, its DPR matches
  *              DEVICE_SCALE_FACTOR
  * Coverage     every ok interaction in the steps phase has a before-frame and a described target
@@ -39,6 +42,8 @@ export interface CheckOptions {
   requireFlows?: string[];
   identifiers?: IdentifierValue[];
   secrets?: string[];
+  /** `<Device>/<module>/<flow>` keys captured as the dummy account. Default: read from evidence-summary.json. */
+  dummyFlows?: string[];
 }
 
 export interface CheckResult {
@@ -83,9 +88,14 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
     return { passed: false, files: 0, steps: 0, findings };
   }
 
-  const identifiers = (opts.identifiers ?? identifierValues()).filter((i) => i.digits.length === 10);
+  const identifiers = opts.identifiers ?? identifierValues();
   const secrets = (opts.secrets ?? secretValues()).filter((s) => s.length >= 3);
-  const idPatterns = identifiers.map((i) => ({ name: i.name, re: new RegExp(i.digits.split('').join('[\\s-]*')) }));
+  const escape = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const idPatterns = identifiers
+    .filter((i) => i.digits.length >= 7 || (i.text ?? '').length >= 3)
+    .map((i) => ({ name: i.name, re: i.digits ? new RegExp(i.digits.split('').join('[\\s-]*')) : new RegExp(escape(i.text!), 'i') }));
+  const dummyFlows = opts.dummyFlows ?? readDummyFlows(opts.runDir);
+  const inDummyFlow = (r: string) => dummyFlows.some((k) => r.startsWith(`${k}/`));
   const files = walk(opts.runDir).filter((f) => path.basename(f) !== 'evidence-check.json');
   let steps = 0;
 
@@ -101,8 +111,10 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
       for (const p of idPatterns) if (p.re.test(s)) add('privacy-identifier', r, `contains the ${p.name} value${where}`);
       // A 4-digit PIN would match inside any hex digest, so digests are skipped and the boundary is alphanumeric.
       for (const sec of secrets) if (new RegExp(`(?<![0-9A-Za-z])${sec}(?![0-9A-Za-z])`).test(s)) add('privacy-secret', r, `contains a secret (PIN) value${where}`);
-      if (EMAIL.test(s)) add('privacy-email', r, `email-shaped string${where}`);
-      if (PHONE.test(s)) add('privacy-phone', r, `phone-shaped string${where}`);
+      // Synthetic data on a dummy flow: still reported, never a blocker.
+      const shape = inDummyFlow(r) ? 'warn' : 'error';
+      if (EMAIL.test(s)) add('privacy-email', r, `email-shaped string${where}`, shape);
+      if (PHONE.test(s)) add('privacy-phone', r, `phone-shaped string${where}`, shape);
     };
 
     if (ext === '.txt') { scan(text, ''); continue; }
@@ -142,15 +154,35 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
   }
 
   const runsDir = path.join(opts.runDir, 'runs');
+  // Manifests sit in runs/<Device>/ (one per device the run captured), or
+  // directly in runs/ for a run from before devices existed.
+  const deviceDirs = fs.existsSync(runsDir)
+    ? fs.readdirSync(runsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => path.join(runsDir, e.name))
+    : [];
   for (const req of opts.requireFlows ?? []) {
-    const file = path.join(runsDir, `${req.replace('/', '-')}.flow-run.json`);
-    if (!fs.existsSync(file)) { add('required-flow', req, 'required flow has no run manifest in this evidence run'); continue; }
-    const run = JSON.parse(fs.readFileSync(file, 'utf8')) as FlowRun;
-    if (run.status === 'failed') add('required-flow', req, `required flow failed: ${run.errors.length} error(s)`);
+    const name = `${req.replace('/', '-')}.flow-run.json`;
+    const files = [runsDir, ...deviceDirs].map((d) => path.join(d, name)).filter((f) => fs.existsSync(f));
+    if (!files.length) { add('required-flow', req, 'required flow has no run manifest in this evidence run'); continue; }
+    for (const file of files) {
+      const run = JSON.parse(fs.readFileSync(file, 'utf8')) as FlowRun;
+      if (run.status === 'failed') add('required-flow', req, `required flow failed${run.device ? ` on ${run.device}` : ''}: ${run.errors.length} error(s)`);
+    }
   }
 
   if (steps === 0) add('run', rel(opts.runDir), 'no step evidence found');
   return { passed: !findings.some((f) => f.severity === 'error'), files: files.length, steps, findings };
+}
+
+/** Flow keys the evidence run recorded as captured by the dummy account. */
+function readDummyFlows(runDir: string): string[] {
+  const file = path.join(runDir, 'evidence-summary.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const summary = JSON.parse(fs.readFileSync(file, 'utf8')) as { flows?: Array<{ device: string; module: string; flow: string; dummy?: boolean }> };
+    return (summary.flows ?? []).filter((f) => f.dummy === true).map((f) => `${f.device}/${f.module}/${f.flow}`);
+  } catch {
+    return [];
+  }
 }
 
 function latestRun(): string | null {

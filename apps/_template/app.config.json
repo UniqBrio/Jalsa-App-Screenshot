@@ -1,0 +1,122 @@
+{
+  "$comment": [
+    "APP PROFILE TEMPLATE. Copy this folder to apps/<app-id>/ and replace every placeholder.",
+    "<app-id> is the folder name: lower-case letters, digits, - and _. Select it with --app <app-id> or APP=<app-id>.",
+    "",
+    "appName            Display name. Used in the run banner, generated docs and LLM prompts.",
+    "appDescription     ONE line: what the app is for and who uses it. Fed to the doc/discovery LLM prompts.",
+    "baseUrl            Where the app runs. Every goto path in a flow is relative to it.",
+    "                   APP_URL in apps/<app-id>/.env may point at a preview build instead (still host-gated).",
+    "allowedHosts       The safety gate refuses any target host not listed here. Bare host names, no scheme.",
+    "writeAllowedHosts  Hosts where a DUMMY write flow may write. Usually just the test/staging host of the",
+    "                   dummy tenant. Must be a subset of allowedHosts. Empty = no writes anywhere.",
+    "repoPath           Optional local clone of the app repo, for the git-diff skip filter",
+    "                   (APP_REPO_PATH in .env overrides it). Empty = every flow runs every time.",
+    "repoBranch         Branch of that clone. Default main.",
+    "framework          Hint that switches framework-specific behaviour on: react-native-web (login fields are",
+    "                   typed key-by-key), nextjs, react, vue, angular, svelte, other.",
+    "theme              light | dark — the OS colour scheme the browser reports (COLOR_SCHEME overrides).",
+    "locale, timezone   What the emulated browser reports, so dates and numbers render as users see them.",
+    "docsAudience       Who generated docs are written for, e.g. 'a shop manager'.",
+    "loginAdapter       How to sign in. See the $comment inside it.",
+    "accounts           Identities flows can sign in as (flow `auth:`). Each names the .env variables holding",
+    "                   its login and its secret. `optional: true` skips that identity's flows (with a reason)",
+    "                   when its credentials are missing. The name `dummy` is reserved for the dummy account,",
+    "                   the ONLY identity that may ever write. `none` (signed-out) needs no entry.",
+    "defaultAccount     Identity a flow uses when it has no `auth:`. May not be `dummy`.",
+    "extraEnvVars       Other .env variables flows may use as {{NAME}} (e.g. a pinned record id). Never credentials.",
+    "dummyAccount       The dummy tenant's fingerprint and write-safety switches. See the $comment inside it.",
+    "interstitials      Selectors of nuisance overlays (cookie banner, nudge modal) dismissed before each tap.",
+    "discovery          Where `npm run discover` looks for navigation. See the $comment inside it."
+  ],
+
+  "appName": "Sample App",
+  "appDescription": "REPLACE ME — one line on what the app does and who uses it.",
+  "baseUrl": "https://app.example.com",
+  "allowedHosts": ["app.example.com", "localhost", "127.0.0.1"],
+  "writeAllowedHosts": [],
+  "repoPath": "",
+  "repoBranch": "main",
+  "framework": "other",
+  "theme": "light",
+  "locale": "en-US",
+  "timezone": "UTC",
+  "docsAudience": "a person using the app for the first time",
+
+  "loginAdapter": {
+    "$comment": [
+      "type: email-password | username-password | mobile-pin. Selectors are the app's own, ideally data-testid.",
+      "email-password     selectors: email, password, submit, signedIn (required); next, error (optional)",
+      "username-password  selectors: username, password, submit, signedIn (required); next, error (optional)",
+      "                   options:   loginPath ('/login'), homePath ('/'), typing ('fill' | 'sequential'), statusPattern",
+      "                   `next` is for two-step forms that reveal the password after a button press.",
+      "mobile-pin         selectors: phone, continue, pin, signedIn (required); mustChangePin (optional)",
+      "                   options:   countryCode (e.g. '1'), mobileDigits (10), pinDigits (4), loginPath ('/'),",
+      "                              registerUrlPattern (regex of the route an unknown number is sent to), statusPattern",
+      "signedIn is an element that exists ONLY when signed in (an account menu, the app shell header)."
+    ],
+    "type": "email-password",
+    "selectors": {
+      "email": "[data-testid=\"login-email\"]",
+      "password": "[data-testid=\"login-password\"]",
+      "submit": "[data-testid=\"login-submit\"]",
+      "signedIn": "[data-testid=\"app-shell\"]"
+    },
+    "options": {
+      "loginPath": "/login",
+      "homePath": "/"
+    }
+  },
+
+  "accounts": {
+    "admin": {
+      "description": "A real account with full navigation. Permanently READ-ONLY.",
+      "userEnv": "ADMIN_EMAIL",
+      "secretEnv": "ADMIN_PASSWORD"
+    },
+    "dummy": {
+      "description": "The dummy account in its own separate test tenant. The only identity that may write.",
+      "userEnv": "DUMMY_EMAIL",
+      "secretEnv": "DUMMY_PASSWORD",
+      "optional": true
+    }
+  },
+  "defaultAccount": "admin",
+  "extraEnvVars": [],
+
+  "dummyAccount": {
+    "$comment": [
+      "A flow writes only when ALL hold: WRITE_MODE=dummy, the flow declares `writes: true` and `auth: dummy`,",
+      "the host is in writeAllowedHosts, and after sign-in the tenant id AND name read from the page equal",
+      "tenantId / tenantName below EXACTLY. Any mismatch aborts the run before the first action.",
+      "tenantIdProbe / tenantNameProbe: where to read them — { selector, attribute? } (attribute omitted = the",
+      "  element's text) or { urlPattern } (a regex with one capture group, matched against the URL).",
+      "messagingSuppressed: true ONLY if the dummy tenant cannot send email/SMS/WhatsApp. A write flow that",
+      "  declares `sends_messages` is skipped and flagged in the run report otherwise.",
+      "syntheticPhones: extra fake phone numbers write flows may type, beyond 555-01xx and repeated digits.",
+      "Leave tenantId / tenantName empty until the dummy tenant exists: write flows then refuse to run."
+    ],
+    "fingerprint": {
+      "tenantId": "",
+      "tenantName": "",
+      "tenantIdProbe": { "selector": "[data-testid=\"tenant-switcher\"]", "attribute": "data-tenant-id" },
+      "tenantNameProbe": { "selector": "[data-testid=\"tenant-name\"]" }
+    },
+    "messagingSuppressed": false,
+    "syntheticPhones": []
+  },
+
+  "interstitials": [],
+
+  "discovery": {
+    "$comment": [
+      "Each navSource: open `path`, read every control matching `items`, tap each (re-found by `role` +",
+      "accessible name) and record the route it opens. labelAttribute reads the label from an attribute;",
+      "labelCut cuts the label at the first of these characters ('Settings, 3' -> 'Settings').",
+      "Omit this section to read the tabs and nav links on '/'."
+    ],
+    "navSources": [
+      { "path": "/", "items": "nav a[href]", "role": "link", "tab": true }
+    ]
+  }
+}

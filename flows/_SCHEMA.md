@@ -1,24 +1,29 @@
 # Flow YAML schema
 
-One file per **flow**, not per module. A module like `attendance` has
-several: `courses-workspace`, `course-detail`, `attendance-register`, plus any
-empty / error variants you add. Every button, menu, tab and state you want
-captured becomes its own step or its own flow.
+The reference for flow manifests, shared by every app. Each app keeps its
+flows in its own profile: `apps/<app-id>/flows/`.
 
-**This project is read-only against the live RosiFit app.** A flow may open
+One file per **flow**, not per module. A module like `settings` has several —
+`profile`, `team`, `billing` — plus any empty / error variants you add. Every
+button, menu, tab and state you want captured becomes its own step or its own
+flow.
+
+**Real accounts are read-only.** A flow signed in as a real account may open
 forms, dropdowns, dialogs and filters, and may type into search boxes and the
 sign-in form — it may never save, send, upload, delete, register, or change a
-setting that is stored on the account (Appearance's theme and accent are).
-`npm run validate` enforces the parts of that it can see (`creates_data`,
-`run_tag: true`, leftover `cleanup` blocks); the rest is your review.
+setting stored on the account. `npm run validate` enforces the parts of that it
+can see (`creates_data`, `run_tag: true`, `writes: true`, leftover `cleanup`
+blocks); the rest is your review. The one exception is the **dummy account**:
+see *Dummy write flows* below.
 
-Filename convention: `flows/{module}.{flow}.yaml`
-(e.g. `flows/attendance.mark-attendance.yaml`)
+Filename convention: `apps/<app-id>/flows/{module}.{flow}.yaml`
+(e.g. `settings.edit-profile.yaml`)
 
 **Two schema versions coexist.** A manifest with no `schema_version` is v1 and
 keeps working exactly as written — the loader normalises it into the v2 shape
 internally, so there is one execution path. New flows should declare
-`schema_version: 2`. `flows/attendance.course-detail.yaml` is the worked reference.
+`schema_version: 2`. `apps/_template/flows/home.home-overview.yaml` is a
+minimal worked example.
 
 ---
 
@@ -26,19 +31,22 @@ internally, so there is one execution path. New flows should declare
 
 ```yaml
 schema_version: 2            # absent => 1
-module: attendance           # required — must exist as a key in config/routes.map.json
-flow: course-detail          # required — must be listed under that module's `flows`
-title: Course detail         # required in v2 — short human name
+module: settings             # required — must exist as a key in config/routes.map.json
+flow: edit-profile           # required — must be listed under that module's `flows`
+title: Edit profile          # required in v2 — short human name
 description: One line, shows up in generated docs
-audience: academy owner      # who the generated DOC is for
-auth: admin                  # who the runner LOGS IN AS: admin | staff | none
-tags: [roster, filters]
+audience: account owner      # who the generated DOC is for
+auth: admin                  # who the runner LOGS IN AS: an account from app.config.json, or none
+writes: false                # true only for a dummy write flow — see below
+sends_messages: []           # email | sms | whatsapp | push — only on a dummy write flow
+devices: [Laptop, Mobile]    # optional — device ids from config/devices.json; absent = every selected device
+tags: [profile, forms]
 scenario_class: happy        # happy | validation | duplicate | empty | permission | offline
 settle_ms: 350               # default settle after every step in this flow
 disabled: false              # skip without deleting the file
 
 depends_on_routes:           # documentation + discovery cross-check
-  - /course/[id]
+  - /settings/profile
 
 vars:                        # flow-local {{interpolation}}; env vars win on collision
   ROW_INDEX: "0"
@@ -48,7 +56,8 @@ steps:    [...]              # required
 teardown: [...]              # optional — always runs, even after a failure
 ```
 
-There is no `cleanup` block. A flow that would need one cannot exist here.
+There is no `cleanup` block. A dummy write flow removes what it created in
+`teardown`; a read-only flow has nothing to clean up.
 
 `audience` and `auth` are deliberately separate. `auth` picks the credentials;
 `audience` only labels the generated documentation.
@@ -57,9 +66,10 @@ There is no `cleanup` block. A flow that would need one cannot exist here.
 
 | value | what the runner does |
 |---|---|
-| `admin` (default) | signs in once as the super admin (`SIGNIN_MOBILE` / `SIGNIN_PIN`) and shares that session across every `admin` flow |
-| `staff` | the same, as a staff account (`STAFF_MOBILE` / `STAFF_PIN`); skipped with a reason when those are unset |
-| `none` | a **fresh, signed-out** browser context for this flow alone — for the sign-in screens. `/` shows the number field only when nobody is signed in, so these cannot share the admin session |
+| an account name from `accounts` in `app.config.json` (e.g. `admin`) | signs in once as that account — credentials from the `.env` variables the account names — and shares the session across every flow using it, per device. Absent `auth` means the profile's `defaultAccount` |
+| an `optional: true` account | the same; its flows are skipped with a reason while its credentials are unset |
+| `dummy` | the dummy account in its own test tenant. After every sign-in the tenant is checked against the profile's `dummyAccount.fingerprint`; a mismatch aborts the run. The only identity that may write |
+| `none` | a **fresh, signed-out** browser context for this flow alone — for the sign-in screens, which a signed-in session would skip past |
 
 `scenario_class: offline` is a **label**. It does not put the browser offline —
 the browser context is shared across every flow in a run, so a flow that went
@@ -84,13 +94,13 @@ Every step, in every block, accepts:
 | `assert` | see Assertions |
 | `mask` | selectors blacked out in the PNG *and* stripped before hashing |
 | `optional` | `true` = log and continue on failure |
-| `creates_data` | `true` = this step writes rows — a **hard error** in this project; the recorder's converter may leave it for you to remove |
-| `run_tag` | **required on `type`/`fill`**: does this value create a record? Only `false` (a search box, a filter, the sign-in form) can be promoted; `true` is a hard error. The recorder's converter emits `TODO`, which only a promoted flow rejects. |
+| `creates_data` | `true` = this step writes data. A **hard error** except in a dummy write flow |
+| `run_tag` | **required on `type`/`fill`**: does this value create a record? `false` for a search box, a filter, the sign-in form. `true` only in a dummy write flow, and the value must contain `{{RUN_TAG}}`. The recorder's converter emits `TODO`, which only a promoted flow rejects. |
 | `selector_exempt` | reason string; see Selector policy |
 
 **Number ids in tens** (`010`, `020`, `030`). Inserting a state later then costs
-nothing. Renumbering an existing step orphans its `fingerprints/baseline.json`
-entry, which silently throws away that step's change history.
+nothing. Renumbering an existing step orphans its fingerprint baseline entry
+(`apps/<app-id>/fingerprints/baseline.json`), which silently throws away that step's change history.
 
 Ids must be unique across `setup`, `steps` and `teardown` — all three share one
 screenshot filename namespace.
@@ -103,7 +113,7 @@ screenshot filename namespace.
 
 | action | uses `selector` | uses `value` | other fields | notes |
 |---|---|---|---|---|
-| `goto` | no | path, e.g. `/attendance` | | relative to `APP_URL` |
+| `goto` | no | path, e.g. `/settings` | | relative to the profile's `baseUrl` |
 | `click` | yes | — | | waits for visible first |
 | `type` | yes | text | | clears, then **real per-character key events** |
 | `select` | yes | option value | | falls back to label; `<select>` only |
@@ -134,9 +144,9 @@ Still first-class, not deprecated.
 
 - **Interstitial dismissal.** Before every interactive action (and after every
   navigation) the runner clears any known interstitial that intercepts taps —
-  see `src/interstitials.ts`. RosiFit has none today, so the list is empty; it
-  is kept because this is the *only* place text/aria-label matching is allowed,
-  and the day the app grows a nudge the fix is one selector there. To capture an
+  the `interstitials` selectors in the app profile (`src/interstitials.ts`).
+  Most apps need none. It is the *only* place text/aria-label matching is
+  allowed, and the day an app grows a nudge the fix is one selector there. To capture an
   interstitial *before* it is dismissed, put a `snapshot` step (non-interactive,
   so it is not pre-dismissed) with a `settle_ms` long enough for it to appear.
 - **Stability gate (never capture a loading state).** Before every screenshot the
@@ -148,9 +158,9 @@ Still first-class, not deprecated.
 **`type` vs `fill`.** `fill()` sets the value in one shot. Some controlled
 inputs key their internal state off `keydown` rather than the DOM value, so
 `fill` can look correct on screen without actually arming the submit button —
-RosiFit's sign-in number field groups digits on every keystroke and its PIN
-field submits on the fourth one, so `src/login.ts` uses key events. Prefer
-`type` for new work;
+grouped-digit phone fields and PIN fields that submit on the last digit are the
+classic cases (react-native-web apps especially), which is why the login
+adapters type key by key there. Prefer `type` for new work;
 `fill` is there when speed matters and the input is known to be simple.
 
 ### `expect`
@@ -164,7 +174,7 @@ field submits on the fourth one, so `src/login.ts` uses key events. Prefer
 
 ```yaml
   expect:
-    text: "Attendance marked"
+    text: "Changes saved"
 ```
 
 ```yaml
@@ -213,7 +223,7 @@ disabled to enabled
 A step that changes nothing visible writes no file and logs why:
 
 ```
-⊘ [members/member-directory] 040-search (type) — screenshot: auto,
+⊘ [settings/team] 040-search (type) — screenshot: auto,
   no visible state change (route=same overlays=same scroll=same lists=same
   errors=same toasts=same tab=same loading=same disabled=same)
 ```
@@ -249,12 +259,13 @@ every run — which poisons the fingerprint baseline with permanent false
 ## Output naming
 
 ```
-screenshots/{module}/{flow}/{step-id}.{mode}.png
+runs/{app-id}/{run-id}/{Device}/{module}/{flow}/{step-id}.{mode}.png
 ```
 
-Zero-padded, sortable, stable across runs. Modes: `viewport`, `full`,
-`element`, `failed`. Failure shots are cleared at the start of every run, so a
-fixed step never leaves a stale `.failed.png` in the repo.
+Zero-padded, sortable, and the same names in every run, so two runs compare
+file for file. Modes: `viewport`, `full`, `element`, `failed`, `loading`. Each
+run writes into its own folder, so a fixed step never inherits a stale
+`.failed.png`.
 
 ---
 
@@ -272,8 +283,8 @@ written, so you can see exactly where it broke.
 Every failure names the flow, the step id and the selector:
 
 ```
-✗ [attendance/course-detail] step 070-open-show (click)
-    selector=[data-testid="course-show-field"]:
+✗ [settings/edit-profile] step 070-open-timezone (click)
+    selector=[data-testid="profile-timezone-field"]:
     locator.waitFor: Timeout 15000ms exceeded waiting for state "visible"
 ```
 
@@ -286,10 +297,11 @@ Both take the same step vocabulary.
 - `setup` runs first. Use it to establish the flow's own starting point.
 - `teardown` **always** runs, including after a failed step. Its failures are
   recorded in the run manifest but never change the flow's status: the captures
-  already happened, and losing them to a cleanup hiccup helps nobody.
+  already happened, and losing them to a cleanup hiccup helps nobody. In a
+  dummy write flow it is required, and deletes what the flow tagged.
 
 **Flows must be independently runnable.** No flow may depend on navigation
-state left behind by another (there is no data left behind — nothing writes).
+state or data left behind by another.
 This is enforced, not just documented: `npm run validate` rejects any `{{VAR}}`
 that is not an env var, not a key in the flow's own `vars`, and not `RUN_ID` /
 `RUN_TAG`.
@@ -298,21 +310,21 @@ that is not an env var, not a key in the flow's own `vars`, and not `RUN_ID` /
 
 ## Interpolation
 
-`{{APP_URL}}`, `{{SIGNIN_MOBILE}}`, `{{SIGNIN_PIN}}`, `{{STAFF_MOBILE}}`,
-`{{STAFF_PIN}}`, `{{FIXED_COURSE_ID}}`, `{{FIXED_MEMBER_ID}}`, plus anything
-under the flow's own `vars:`. Two dynamic values are injected per run:
-`{{RUN_ID}}` and `{{RUN_TAG}}` (= `SCRSHOT_<run_id>_`) — kept for schema
-compatibility with the recorder's drafts; no promoted flow may write, so
-nothing ever carries `RUN_TAG` into the app.
+`{{APP_URL}}`; the `userEnv` / `secretEnv` variable of every account in the
+profile (e.g. `{{ADMIN_EMAIL}}`, `{{ADMIN_PASSWORD}}`); the profile's
+`extraEnvVars` (e.g. a pinned record id); plus anything under the flow's own
+`vars:`. Two dynamic values are injected per run: `{{RUN_ID}}` and
+`{{RUN_TAG}}` (= `SCRSHOT_<run_id>_`). Only a dummy write flow ever types
+`{{RUN_TAG}}` into the app — it is how its records are found again.
 
-**Secrets are redacted before anything is written.** Every selector, input and
-result string that lands in a run manifest or the log passes through
-`redactSecrets()` (`src/env.ts`), which replaces the PIN values with
-`«redacted»` and the sign-in mobile numbers (spaced or +91-prefixed too) with
-`«redacted:SIGNIN_MOBILE»` / `«redacted:STAFF_MOBILE»`. Log lines pass through
-the same function. That is why the sign-in journey types the PIN as ONE value from
-`{{SIGNIN_PIN}}` rather than tapping four keypad keys: one value can be
-redacted, four single-digit selectors cannot.
+**Credentials are redacted before anything is written.** Every selector, input
+and result string that lands in a run manifest or the log passes through
+`redactSecrets()` (`src/env.ts`), which replaces every account secret with
+`«redacted»` and every login (a mobile number in any spacing or prefix, or an
+email / username, case-insensitively) with `«redacted:<ENV_NAME>»`. Log lines
+pass through the same function. That is why a sign-in flow types a PIN as ONE
+value from `{{…_PIN}}` rather than tapping keypad keys: one value can be
+redacted, single-digit selectors cannot.
 
 ---
 
@@ -326,18 +338,18 @@ Allowed — and nothing else:
 
 ```yaml
 '[data-testid="btn-submit"]'                            # =, ^=, *=, $= all fine
-'[data-testid="course-member-{{FIXED_MEMBER_ID}}"]'     # {{VAR}} inside the value
-'[data-testid^="courses-open-"]'                        # prefix — "the first course card"
-'role=button[name="Change My PIN"]'                     # Playwright role engine
-'role=button[name=/^Branches/]'                         # role + regex name, for names that carry a count
+'[data-testid="user-row-{{FIXED_USER_ID}}"]'            # {{VAR}} inside the value
+'[data-testid^="order-card-"]'                          # prefix — "the first order card"
+'role=button[name="Change password"]'                   # Playwright role engine
+'role=button[name=/^Notifications/]'                    # role + regex name, for names that carry a count
 '[data-testid="row-1"] [data-testid="btn-edit"]'        # a chain, if every term is on policy
+```
 
-RosiFit is React Native for web: a component's `testID` reaches the DOM as
+In a react-native-web app a component's `testID` reaches the DOM as
 `data-testid`, and `accessibilityRole` + `accessibilityLabel` reach it as
 `role` + `aria-label`, so both allowed forms map straight onto the app source.
-The More screen's rows, the member rows and the pill are named Pressables with
-no test id — role selectors are the right tool there, not an exemption.
-```
+Named controls without a test id are what role selectors are for — not an
+exemption.
 
 Rejected, with the offending flow, step and selector named:
 
@@ -366,9 +378,8 @@ escape hatch is per-step and requires a reason:
 ```
 
 Validate then reports it as a warning on **every** run, so an exemption can
-never quietly become permanent. The right fix is a `testID` in the RosiFit app
-repo (github.com/UniqBrio/RosiFit); `docs/SELECTOR-GAPS.md` is the backlog for
-that.
+never quietly become permanent. The right fix is a test id in the app repo;
+`docs/SELECTOR-GAPS.md` describes how to keep that backlog per app.
 
 ---
 
@@ -378,16 +389,18 @@ Authoring hundreds of steps by hand is the bottleneck, so a scenario can be
 walked once in a real browser and converted into a draft:
 
 ```bash
-npm run record -- --flow members.member-filters      # headed; you drive, it observes
-npm run record:convert -- --flow members.member-filters
-npm run record:diff -- --flow members.member-filters # read-only: what would change
+npm run record -- --app my-app --flow settings.edit-profile       # headed; you drive, it observes
+npm run record:convert -- --app my-app --flow settings.edit-profile
+npm run record:diff -- --app my-app --flow settings.edit-profile  # read-only: what would change
 ```
 
 `record` authenticates via `src/login.ts` FIRST and installs its listeners
 after, so nothing the login does appears in the log. It never synthesises an
-interaction. It writes `recordings/<flow>.json` (committed; values matching
-passwords, tel/email inputs, email shapes, 10-digit numbers and the .env PINs
-are redacted at record time) and refuses to overwrite an existing recording without `--force`.
+interaction. It signs in as the profile's `defaultAccount` (`--as <identity>`
+for another). It writes `apps/<app-id>/recordings/<flow>.json` (values matching
+passwords, tel/email inputs, email shapes, 10-digit numbers and every account's
+login and secret are redacted at record time) and refuses to overwrite an
+existing recording without `--force`.
 
 `record:convert` is deterministic — no LLM anywhere in the path. It maps the
 log to schema v2: testid selectors first, role/name only when verified unique
@@ -395,19 +408,65 @@ at record time, `TODO_SELECTOR` otherwise; consecutive scrolls collapse into
 one `scrollUntilVisible` targeting whatever was clicked next; a click that
 opened a dialog captures `element:<dialog>` and is followed by an
 `expect ... visible`; route changes become `assert.url_contains` on the causing
-step. It writes `flows/<flow>.generated.yaml` and never touches
-`flows/<flow>.yaml`.
+step. It writes `apps/<app-id>/flows/<flow>.generated.yaml` and never touches
+`<flow>.yaml`.
 
 **Drafts cannot run.** `*.generated.yaml` is excluded from `loadFlows()`, so
 the runner, doc-generator and discovery never see it. `npm run
 validate` reports each draft as `draft — N TODO(s) remaining, not executable`
 without failing.
 
-**Promotion is manual**: resolve every `TODO_SELECTOR`, set `run_tag: false`
-on each `type` step (if the honest answer is `true`, the step — and probably
-the flow — cannot be promoted), replace the `TODO` teardown with steps that
-return the app to where the flow started, delete the
-`# GENERATED — review before use` header, and rename the file to
-`flows/<flow>.yaml`. A promoted flow still containing any of those markers is a
+**Promotion is manual**: resolve every `TODO_SELECTOR`, answer `run_tag` on
+each `type` step (if the honest answer is `true`, the flow can only be promoted
+as a dummy write flow), replace the `TODO` teardown with steps that return the
+app to where the flow started, delete the `# GENERATED — review before use`
+header, and rename the file to `<flow>.yaml`. A promoted flow still containing any of those markers is a
 hard validation error — checked against the raw file text before YAML parsing,
 so the first error you see is the TODO itself.
+
+---
+
+## Dummy write flows
+
+Pages that exist only after a write — confirmations, "record created" states,
+registration steps — are captured with the **dummy account**, in its own
+separate test tenant. A flow may write only when **all** of these hold:
+
+1. `WRITE_MODE=dummy` (in `apps/<app-id>/.env` or the shell);
+2. the flow declares `writes: true` **and** `auth: dummy`;
+3. after sign-in, the tenant id **and** name the app shows equal the profile's
+   `dummyAccount.fingerprint` **exactly**;
+4. the host is in the profile's `writeAllowedHosts`.
+
+With `WRITE_MODE` off, write flows are skipped with a reason. With it on, any
+failed gate aborts the whole run before the first action; the dummy tenant is
+verified before any flow runs.
+
+What validate requires of a write flow:
+
+| rule | why |
+|---|---|
+| `auth: dummy` and `writes: true` | real logins are permanently read-only |
+| at least one `run_tag: true` step, and every such value contains `{{RUN_TAG}}` | every record the run creates carries the run id |
+| a non-empty `teardown` | it deletes what the run tagged |
+| emails typed or in `vars` on a reserved domain (`@example.com`, `*.example`, `*.test`) | mail can never reach a person |
+| phone numbers obviously fake: `555-01xx`, a run of one digit, or listed in `dummyAccount.syntheticPhones` | SMS can never reach a person |
+
+At run time the executor refuses any write step that did not pass the gates,
+and a teardown step that taps, types or clicks runs **only while the run tag is
+on screen** — so a teardown can delete this run's records, never the tenant's
+seed data.
+
+A write flow that triggers outbound messages declares them:
+
+```yaml
+sends_messages: [email, whatsapp]
+```
+
+It is skipped, and listed under `flagged` in `run-summary.json`, unless the
+profile says the dummy tenant's messaging is off
+(`dummyAccount.messagingSuppressed: true`).
+
+Write flows change list contents, so their screenshots differ run to run; use
+`mask:` on the volatile rows and keep write flows in their own modules so they
+cannot destabilise the read-only baselines.

@@ -13,10 +13,9 @@ import * as os from 'os';
 import * as path from 'path';
 import zlib from 'zlib';
 
-process.env.SIGNIN_MOBILE = '9000048261';
-process.env.SIGNIN_PIN = '4826';
-process.env.STAFF_MOBILE = '';
-process.env.STAFF_PIN = '';
+import { useSampleApp } from './helpers/sample-app';
+
+useSampleApp({ SIGNIN_MOBILE: '9000048261', SIGNIN_PIN: '4826' });
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const probe = require('../manual/census-probe') as typeof import('../manual/census-probe');
@@ -88,11 +87,11 @@ test('region class wins over every label rule', () => {
   const region = { id: 'member-rows', class: 'P' as const };
   assert.deepEqual(cls(plain('Continue', { region })), { class: 'P', rule: 'region:member-rows' });
   assert.equal(cls(plain('Synthetic Person', { region, control_static_testid: true })).class, 'P');
-  assert.equal(cls(plain('Fixture Academy', { region: { id: 'academy-header', class: 'O' } })).class, 'O');
+  assert.equal(cls(plain('Sample Org', { region: { id: 'org-header', class: 'O' } })).class, 'O');
 });
 
 test('identifier and pattern rules win over a region', () => {
-  const region = { id: 'academy-header', class: 'O' as const };
+  const region = { id: 'org-header', class: 'O' as const };
   assert.equal(cls(plain('+91 90000 48261', { region })).class, 'I');
   assert.equal(cls(plain('someone.synthetic@example.com', { region })).class, 'P');
 });
@@ -237,7 +236,7 @@ test('pngSize reads IHDR and rejects non-PNGs', () => {
 
 // ─── PII config ──────────────────────────────────────────────────────────────
 
-test('the committed config/pii-regions.json loads and normalises its labels', () => {
+test('the Sample App pii-regions.json loads and normalises its labels', () => {
   const c = cfg.loadPiiConfig();
   assert.ok(c.data_regions.some((r) => r.id === 'member-rows'));
   assert.ok(c.label_texts.includes('welcome a new member'));
@@ -273,7 +272,7 @@ function phase(framePath: string | null) {
 
 function validDoc() {
   return {
-    schema: 1, run_id: 'r', module: 'zz', flow: 'fx', step_id: '030-continue', phase: 'steps', action: 'click',
+    schema: 2, run_id: 'r', device: 'Mobile', module: 'zz', flow: 'fx', step_id: '030-continue', phase: 'steps', action: 'click',
     input: null,
     target: {
       ref: 'zz/fx/030-continue#target', selector: '[data-testid="signin-continue"]', selector_kind: 'testid', match_count: 1, list_instance: false,
@@ -345,6 +344,18 @@ test('evidence:check fails on an email, a phone number, the identifier or the PI
   assert.ok(errorChecks(runCheck(writeRun((d) => { d.error = 'pin 4826 entered'; }))).includes('privacy-secret'));
   const txt = writeRun((_d, dir) => fs.writeFileSync(path.join(dir, 'label-review.txt'), 'someone.synthetic@example.com'));
   assert.ok(errorChecks(runCheck(txt)).includes('privacy-email'));
+});
+
+test('on a dummy flow, email/phone shapes are warnings — credentials stay errors', () => {
+  const dummyCheck = (dir: string) =>
+    check.checkEvidenceRun({ runDir: dir, expectedDpr: 2, requireFlows: ['zz/fx'], identifiers: RULES.identifiers, secrets: RULES.secrets, dummyFlows: ['zz/fx'] });
+  const email = dummyCheck(writeRun((d) => { d.error = 'saw someone.synthetic@example.com'; }));
+  assert.equal(errorChecks(email).includes('privacy-email'), false);
+  assert.ok(email.findings.some((f) => f.check === 'privacy-email' && f.severity === 'warn'), 'still reported');
+  assert.equal(email.passed, true);
+  assert.equal(errorChecks(dummyCheck(writeRun((d) => { d.error = 'call 81234 56789'; }))).includes('privacy-phone'), false);
+  assert.ok(errorChecks(dummyCheck(writeRun((d) => { d.error = 'pin 4826 entered'; }))).includes('privacy-secret'));
+  assert.ok(errorChecks(dummyCheck(writeRun((d) => { d.error = 'typed 90000 48261'; }))).includes('privacy-identifier'));
 });
 
 test('evidence:check fails on schema violations, missing or mismatched frames, and coverage gaps', () => {

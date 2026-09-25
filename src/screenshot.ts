@@ -2,10 +2,10 @@
  * Screenshot naming + capture modes.
  *
  * Path convention:
- *   screenshots/{module}/{flow}/{step-id}.{mode}.png
+ *   runs/{app-id}/{run-id}/{Device}/{module}/{flow}/{step-id}.{mode}.png
  *
- * Stable paths are the whole point: the daily git diff of screenshots/ IS the
- * change signal, so a filename must not drift when unrelated steps are added.
+ * Stable names within a run are the point: two runs of the same app compare
+ * file-for-file, so a filename must not drift when unrelated steps are added.
  * That is why step ids are numbered and hand-assigned rather than positional.
  *
  * Modes:
@@ -48,8 +48,8 @@ export interface CaptureOptions {
    * a mid-load frame is unmistakable and never mistaken for the settled state.
    */
   unstable?: boolean;
-  /** Output root. Defaults to screenshots/; evidence mode points it inside evidence/<run_id>/. */
-  root?: string;
+  /** Output root: runs/<app>/<run-id>/<Device>/, or inside evidence/<app>/<run_id>/ in evidence mode. */
+  root: string;
 }
 
 export function screenshotPathFor(
@@ -57,7 +57,7 @@ export function screenshotPathFor(
   flow: string,
   stepId: string,
   mode: CaptureFileMode,
-  root: string = paths.screenshots,
+  root: string,
 ): string {
   return path.join(root, module, flow, `${stepId}.${mode}.png`);
 }

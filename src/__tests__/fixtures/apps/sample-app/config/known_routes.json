@@ -1,0 +1,35 @@
+{
+  "last_checked": "1999-01-01T00:00:00Z",
+  "routes": [
+    {
+      "path": "/",
+      "label": "Sign in",
+      "tab": false,
+      "module": "signin"
+    },
+    {
+      "path": "/pin",
+      "label": "PIN",
+      "tab": false,
+      "module": "signin"
+    },
+    {
+      "path": "/courses",
+      "label": "Courses",
+      "tab": true,
+      "module": "courses"
+    },
+    {
+      "path": "/course/[id]",
+      "label": "Course detail",
+      "tab": false,
+      "module": "courses"
+    },
+    {
+      "path": "/member/[id]",
+      "label": "Member detail",
+      "tab": false,
+      "module": "courses"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+# SAMPLE FLOW — replace with the app's own. Full reference: flows/_SCHEMA.md.
+#
+# File name = <module>.<flow>.yaml, and <module> must be a key in
+# config/routes.map.json. One flow = one path through the app, captured as a
+# sequence of screenshots. Selectors must be [data-testid="..."] or
+# role=<role>[name="..."] — ask for a testid in the app repo when neither exists.
+#
+# This flow signs in as the profile's defaultAccount (admin), opens the home
+# screen and captures it. It is READ-ONLY: no step creates data.
+schema_version: 2
+module: home
+flow: home-overview
+title: The home screen after sign-in
+description: A signed-in user lands on the home screen.
+scenario_class: happy
+auth: admin
+audience: a person using the app for the first time
+
+depends_on_routes:
+  - /
+
+steps:
+  - id: 010-home
+    action: goto
+    value: /
+    label: The home screen
+    expect_screen: home
+    screenshot: full
+    settle_ms: 800
+    assert:
+      selector_visible: '[data-testid="app-shell"]'
+
+  # A search box: typing into it creates nothing, so run_tag: false.
+  - id: 020-search
+    action: type
+    selector: 'role=searchbox[name="Search"]'
+    value: "sample"
+    run_tag: false
+    label: Searching from the home screen
+    expect_screen: home-search
+    screenshot: viewport
+    optional: true

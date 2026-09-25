@@ -426,7 +426,7 @@ test('creates_data: true is a hard error, in any block', () => {
   assert.ok(errors.some((e) => e.includes('READ-ONLY') && e.includes('900-z')));
 });
 
-test('a leftover cleanup block from the UniqBrio engine is rejected', () => {
+test('a leftover cleanup block from an older engine is rejected', () => {
   const flow = v2([{ id: '010-a', action: 'click', selector: '[data-testid="n"]' }]) as unknown as Record<string, unknown>;
   flow.cleanup = { tag_prefix: 'SCRSHOT_', tables: ['members'], delete_after_run: true };
   const errors = errorsFor(flow as never);

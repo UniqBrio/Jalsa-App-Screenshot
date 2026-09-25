@@ -89,9 +89,12 @@ export function parseReviewItems(raw: unknown, source = 'review items'): ReviewI
   return items;
 }
 
-export const REVIEW_ITEMS_FILE = path.join(paths.config, 'manual-review-items.json');
+/** apps/<app-id>/config/manual-review-items.json */
+export function reviewItemsFile(): string {
+  return paths.reviewItems;
+}
 
-export function loadReviewItems(file = REVIEW_ITEMS_FILE): { items: ReviewItemConfig[]; sha256: string | null } {
+export function loadReviewItems(file = reviewItemsFile()): { items: ReviewItemConfig[]; sha256: string | null } {
   if (!fs.existsSync(file)) return { items: [], sha256: null };
   const buf = fs.readFileSync(file);
   return { items: parseReviewItems(JSON.parse(buf.toString('utf8')), file), sha256: sha256(buf) };

@@ -9,8 +9,9 @@
  * Layer 2 (secondary, during execution): DOM fingerprint — lives in
  *   fingerprint.ts and runs per screenshot step, classifying what actually moved.
  *
- * Repo availability: APP_REPO_PATH is optional. If it is unset, missing, or not
- * a git repo, layer 1 degrades gracefully — every flow runs and detection falls
+ * Repo availability: the app repo (profile `repoPath`, or APP_REPO_PATH in the
+ * app's .env) is optional. If it is unset, missing, or not a git repo, layer 1
+ * degrades gracefully — every flow runs and detection falls
  * back to layer 2 alone. That is the CI story too, until the app repo is
  * reachable from wherever this executes.
  */
@@ -47,11 +48,11 @@ export function inspectAppRepo(): RepoState {
   const repoPath = env.appRepo.path;
   if (!repoPath) {
     return { available: false, path: null, headSha: null,
-      reason: 'APP_REPO_PATH is not set — git-diff skip filter disabled, every flow will run.' };
+      reason: 'No app repo configured (repoPath / APP_REPO_PATH) — git-diff skip filter disabled, every flow will run.' };
   }
   if (!fs.existsSync(repoPath)) {
     return { available: false, path: repoPath, headSha: null,
-      reason: `APP_REPO_PATH "${repoPath}" does not exist — git-diff skip filter disabled.` };
+      reason: `App repo path "${repoPath}" does not exist — git-diff skip filter disabled.` };
   }
   try {
     const head = git(repoPath, ['rev-parse', 'HEAD']);
