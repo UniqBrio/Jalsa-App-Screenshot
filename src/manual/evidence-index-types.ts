@@ -108,8 +108,14 @@ export interface FrameProvenance {
 }
 
 export interface IndexedFrame {
-  /** Stable across runs: `<module>/<flow>/<step_id>#<kind-suffix>`, or `file:<path>` for unreferenced files. */
+  /**
+   * Stable across runs: `<Device>/<module>/<flow>/<step_id>#<kind-suffix>`, or
+   * `file:<path>` for unreferenced files. The device leads, so the same step on
+   * two devices can never collide on one id.
+   */
   frame_id: string;
+  /** Device profile id. null only for a file nothing references. */
+  device: string | null;
   kind: FrameKind;
   file: { path: string; png_sha256: string; bytes: number; width: number; height: number };
   provenance: FrameProvenance;
@@ -159,6 +165,8 @@ export interface IndexedFlowStep extends IndexedStep {
 
 export interface IndexedFlow {
   flow: string;
+  /** Device profile this flow ran on; one row per flow per device. */
+  device: string;
   title: string | null;
   required: boolean;
   manifest_file: string | null;
@@ -201,6 +209,7 @@ export interface ReviewItemLink {
 
 export interface FlowCoverage {
   flow: string;
+  device: string;
   flow_run_status: string | null;
   flow_failed: boolean;
   required_steps: { total: number; ok: number; not_ok: string[] };
@@ -212,6 +221,7 @@ export interface FlowCoverage {
 
 export interface ScreenCatalogEntry {
   name: string;
+  device: string;
   flows: string[];
   frame_ids: string[];
   canonical_frame_id: string | null;
@@ -292,6 +302,11 @@ function checkFrame(f: unknown, where: string, errs: string[], ids: Set<string>,
   if (f.kind !== 'unreferenced') {
     if (!isStr(f.flow)) errs.push(`${where}.flow: required for a referenced frame`);
     checkStep(f.step, `${where}.step`, errs);
+    // The device must lead the id: that is what keeps two devices from colliding.
+    if (!isStr(f.device) || !f.device) errs.push(`${where}.device: required for a referenced frame`);
+    else if (isStr(f.frame_id) && !(f.frame_id as string).startsWith(`${f.device}/`)) {
+      errs.push(`${where}.frame_id: must start with "${f.device}/" so devices cannot share an id`);
+    }
   }
   if (!EVIDENCE_PURPOSES.includes(f.purpose as EvidencePurpose)) errs.push(`${where}.purpose: invalid`);
   if (!['canonical', 'supporting', 'excluded'].includes(f.suitability as string)) errs.push(`${where}.suitability: invalid`);

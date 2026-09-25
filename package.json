@@ -1,8 +1,8 @@
 {
-  "name": "rosifit-app-screenshot-capture",
+  "name": "any-app-screenshot",
   "version": "1.0.0",
   "private": true,
-  "description": "Deterministic, read-only Playwright capture of every screen/state in the RosiFit PWA (rosi-fit.vercel.app), with git-diff + DOM-fingerprint change detection, nav discovery and doc generation. No cleanup module: nothing is ever written.",
+  "description": "Deterministic Playwright capture of every screen and state of any web app, per app profile (apps/<app-id>/) and device type, with git-diff + DOM-fingerprint change detection, nav discovery and doc generation. Real accounts are read-only; only a verified dummy account in its own test tenant may write.",
   "license": "UNLICENSED",
   "type": "commonjs",
   "engines": {
@@ -23,7 +23,7 @@
     "prune": "ts-node src/prune-runs.ts",
     "baseline:accept": "ts-node src/accept-baseline.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node -r ts-node/register --test src/__tests__/glob.test.ts src/__tests__/fingerprint.test.ts src/__tests__/flow-loader.test.ts src/__tests__/flow-schema.test.ts src/__tests__/record-convert.test.ts src/__tests__/security-policy.test.ts src/__tests__/evidence-unit.test.ts src/__tests__/evidence-capture.test.ts src/__tests__/evidence-index.test.ts",
+    "test": "node -r ts-node/register -r ./src/__tests__/setup.ts --test src/__tests__/glob.test.ts src/__tests__/fingerprint.test.ts src/__tests__/flow-loader.test.ts src/__tests__/flow-schema.test.ts src/__tests__/record-convert.test.ts src/__tests__/security-policy.test.ts src/__tests__/app-profile.test.ts src/__tests__/write-gates.test.ts src/__tests__/write-gates-e2e.test.ts src/__tests__/evidence-unit.test.ts src/__tests__/evidence-capture.test.ts src/__tests__/evidence-index.test.ts",
     "postinstall": "playwright install chromium",
     "record": "ts-node src/recorder.ts",
     "record:convert": "ts-node src/record-convert.ts",

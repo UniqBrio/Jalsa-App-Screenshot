@@ -9,10 +9,9 @@
  * Failure messages always name the flow, the step id and the selector. A bare
  * `locator.waitFor: Timeout` tells you nothing at 7am.
  */
-import * as fs from 'fs';
 import * as path from 'path';
 import { BrowserContext, Page, Locator } from '@playwright/test';
-import { env, paths, interpolate, redactSecrets } from './env';
+import { paths, interpolate, redactSecrets } from './env';
 import { writeJson, relPosix } from './fsx';
 import { log } from './logger';
 import { settle, DEFAULT_SETTLE_MS } from './browser';
@@ -22,6 +21,7 @@ import { capture, captureFailure } from './screenshot';
 import { domHash, fingerprintKey, compareFingerprint, updateFingerprint } from './fingerprint';
 import { readVisualState, diffVisualState, unknownVisualState, VisualState } from './visual-state';
 import { allSteps } from './flow-loader';
+import { isWriteStep } from './write-gates';
 import type { EvidenceSink, PreState } from './manual/evidence-capture';
 import type {
   Flow,
@@ -40,6 +40,15 @@ import type { DeviceProfile } from './devices';
 
 export interface ExecuteOptions {
   runId: string;
+  /** runs/<app-id>/<run-id>/ — screenshots and manifests go under <runDir>/<Device>/. */
+  runDir: string;
+  /** Marker every record created by this run carries ({{RUN_TAG}}). */
+  runTag: string;
+  /**
+   * True only for a dummy write flow that passed every write gate. Without it
+   * a write step is refused here too — defence in depth behind validation.
+   */
+  writeAllowed?: boolean;
   /** The device profile this execution captures on; its id is the top output folder. */
   device: DeviceProfile;
   appGitSha: string | null;
@@ -73,13 +82,12 @@ export async function executeFlow(
   opts: ExecuteOptions,
 ): Promise<FlowRun> {
   const startedAt = new Date();
-  // RUN_TAG is kept for schema compatibility with the recorder's drafts; no
-  // promoted flow may write, so nothing ever carries it into the app.
-  const runTag = `SCRSHOT_${opts.runId}_`;
+  // Only a dummy write flow ever types {{RUN_TAG}} into the app; it is how
+  // that flow's records are found again (and deleted) by run id.
   const vars: Record<string, string> = {
     ...(flow.vars ?? {}),
     RUN_ID: opts.runId,
-    RUN_TAG: runTag,
+    RUN_TAG: opts.runTag,
   };
 
   const run: FlowRun = {
@@ -95,6 +103,7 @@ export async function executeFlow(
     steps: [],
     screenshots: [],
     errors: [],
+    ...(opts.writeAllowed ? { write_mode: 'dummy' as const } : {}),
   };
 
   if (opts.dryRun) {
@@ -118,14 +127,9 @@ export async function executeFlow(
       fingerprint: null,
       duration_ms: 0,
     }));
-    writeRunManifest(run, true);
+    writeRunManifest(run, opts.runDir);
     return run;
   }
-
-  // Clear last run's failure screenshots so a fixed step doesn't leave a
-  // misleading `*.failed.png` sitting in the repo forever. An evidence run
-  // writes into its own fresh directory and must not touch screenshots/.
-  if (!opts.evidence) clearFailureScreenshots(opts.device.id, flow.module, flow.flow);
 
   const page = await context.newPage();
   const state: RunState = { anyChanged: false, anyNew: false };
@@ -152,7 +156,7 @@ export async function executeFlow(
   }
   run.duration_ms = Date.now() - startedAt.getTime();
   if (opts.evidence) opts.evidence.writeFlowRun(run);
-  else writeRunManifest(run);
+  else writeRunManifest(run, opts.runDir);
   return run;
 }
 
@@ -184,8 +188,8 @@ async function runPhase(
         ? { mode: 'element', selector: interpolate(rawSpec.selector, vars) }
         : rawSpec;
 
-    // Run manifests are committed. The PIN of a live account must never be
-    // written into one, so every recorded string passes through redactSecrets.
+    // A credential must never be written into a run manifest, so every
+    // recorded string passes through redactSecrets.
     const result: StepResult = {
       id: step.id,
       action: step.action,
@@ -213,6 +217,18 @@ async function runPhase(
 
     try {
       if (evidence) pre = await evidence.before(page, opts.device, flow, step, selector, mask);
+
+      if (isWriteStep(step) && !opts.writeAllowed) {
+        throw new Error('refused: this step writes data and the flow did not pass the dummy write gates');
+      }
+      // Teardown of a write flow deletes only what this run created: an
+      // interactive step runs only while the run tag is on screen.
+      if (phase === 'teardown' && opts.writeAllowed && INTERACTIVE_ACTIONS.has(step.action)) {
+        const body = (await page.locator('body').innerText().catch(() => '')) || '';
+        if (!body.includes(opts.runTag)) {
+          throw new Error(`teardown refused: the run tag ${opts.runTag} is not on screen — only records this run tagged may be deleted`);
+        }
+      }
 
       // `auto` needs a stable "before" reading, so settle first — comparing a
       // settled state against an unsettled one manufactures phantom changes.
@@ -257,7 +273,7 @@ async function runPhase(
           spec,
           mask,
           unstable: result.unstable,
-          root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(paths.screenshots, opts.device.id),
+          root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(opts.runDir, opts.device.id),
         });
         result.screenshot_paths = files;
         result.screenshot_path = files[0] ?? null;
@@ -302,7 +318,7 @@ async function runPhase(
         flow: flow.flow,
         stepId: step.id,
         mask,
-        root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(paths.screenshots, opts.device.id),
+        root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(opts.runDir, opts.device.id),
       });
       if (result.screenshot_path) result.screenshot_paths = [result.screenshot_path];
 
@@ -450,8 +466,8 @@ async function performAction(
 
     // A real finger tap, dispatched as trusted touch input at the element's
     // centre. Use it where `click` is correct in principle but Playwright's
-    // actionability model blocks it — the welcome screen's "Go to Dashboard"
-    // is a live <button> wrapped in a `div[aria-disabled="true"]`, so
+    // actionability model blocks it — e.g. a live <button> wrapped in a
+    // `div[aria-disabled="true"]` (a common react-native-web shape), so
     // Playwright inherits the ARIA disabled state and refuses to click, while
     // a phone user taps it perfectly well. It is also simply the truer gesture
     // on a touch PWA. Actionability is NOT skipped wholesale: the element must
@@ -549,24 +565,24 @@ async function scrollUntilVisible(page: Page, selector: string, maxScrolls: numb
   throw new Error(`scrollUntilVisible exhausted max_scrolls (${maxScrolls}) without the element entering the viewport`);
 }
 
-/** Steps a swipe is broken into. Enough that RNGH sees a gesture, not a tap. */
+/** Steps a swipe is broken into. Enough that a gesture handler sees a gesture, not a tap. */
 const SWIPE_STEPS = 16;
 
 /**
  * Swipes across an element as a REAL touch sequence: touchStart, N touchMove,
  * touchEnd, delivered through CDP `Input.dispatchTouchEvent`.
  *
- * Why not the obvious alternatives (all measured against the live attendance
- * roster on 2026-08-21):
+ * Why not the obvious alternatives (measured against swipeable list rows in a
+ * react-native-web app):
  *   - `page.touchscreen` only exposes `tap()`. There is no drag.
- *   - Synthetic `new TouchEvent(...)` + `dispatchEvent` is IGNORED. The rows
- *     are React Native Gesture Handler targets (`touch-action: none`); RNGH's
- *     web backend does not react to the untrusted events.
+ *   - Synthetic `new TouchEvent(...)` + `dispatchEvent` is IGNORED by gesture
+ *     handlers that set `touch-action: none` (React Native Gesture Handler's
+ *     web backend, for one) — they do not react to untrusted events.
  *   - A mouse drag does work, but it is a mouse: it exercises a different code
  *     path from the one a phone user hits, so it is not what we want to certify.
  *
  * CDP dispatches TRUSTED touch input into the renderer — the same events a real
- * finger produces — which is what actually moves the roster. The intermediate
+ * finger produces — which is what actually moves the row. The intermediate
  * moves are spaced in real time: a single start->end jump is classified as a tap.
  */
 async function touchSwipe(page: Page, loc: Locator, step: FlowStep): Promise<string> {
@@ -700,21 +716,9 @@ async function runAssertions(
   }
 }
 
-function clearFailureScreenshots(device: string, module: string, flow: string): void {
-  const dir = path.join(paths.screenshots, device, module, flow);
-  if (!fs.existsSync(dir)) return;
-  for (const f of fs.readdirSync(dir)) {
-    if (f.endsWith('.failed.png')) fs.rmSync(path.join(dir, f), { force: true });
-  }
-}
-
-function writeRunManifest(run: FlowRun, dryRun = false): void {
-  const day = run.run_id.slice(0, 10);
-  // Dry-run manifests land in a distinct subfolder so they can never be
-  // mistaken for (or silently overwrite) a real capture run's history.
-  const file = dryRun
-    ? path.join(paths.runs, day, '.dry-run', run.device, `${run.module}-${run.flow}.flow-run.json`)
-    : path.join(paths.runs, day, run.device, `${run.module}-${run.flow}.flow-run.json`);
+/** runs/<app>/<run-id>/<Device>/<module>-<flow>.flow-run.json */
+function writeRunManifest(run: FlowRun, runDir: string): void {
+  const file = path.join(runDir, run.device, `${run.module}-${run.flow}.flow-run.json`);
   writeJson(file, run);
   log.step(`run manifest → ${relPosix(paths.root, file)}`);
 }

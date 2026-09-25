@@ -1,22 +1,20 @@
 # 1_UserManual — how to run this project
 
-Operating manual for the RosiFit screenshot-capture and evidence pipeline: what to
+Operating manual for the screenshot-capture and evidence pipeline: what to
 install, what to supply, which commands to run in which order, and where every
 output lands.
 
-Written for the person running the capture (an operator or engineer who has a
-terminal and a real RosiFit account).
+Written for the person running a capture (an operator or engineer with a
+terminal and accounts on the app being captured).
 
-> **Scope today.** This instance captures **one application** (the RosiFit PWA)
-> on **one device profile** (a 390x844 phone at 2x). It does not ask which device
-> types you want, cannot capture laptop or tablet form factors truthfully, and
-> cannot prove it visited every page the app repo defines. See
-> [docs/PROPOSAL-any-app-any-device.md](docs/PROPOSAL-any-app-any-device.md)
-> and the *Limits* section at the end.
+> **One engine, many apps.** Everything about the app you capture lives in its
+> profile, `apps/<app-id>/`. Every command below takes `--app <app-id>` (or
+> `APP=<app-id>`); there is no default app. Examples use `my-app`.
 
-> **Read-only, always.** Flows may open, filter, search and type, but must never
-> save, send, upload, delete or register. `npm run validate` enforces what it can
-> see; the rest is your review.
+> **Read-only for real accounts.** Flows signed in as a real account may open,
+> filter, search and type, but never save, send, upload, delete or register.
+> Only the dummy account, in its own test tenant, may write, and only when every
+> write gate holds (§4.3).
 
 ---
 
@@ -26,123 +24,197 @@ terminal and a real RosiFit account).
 |---|---|---|
 | 1 | Node.js 20 or newer | `node -v` |
 | 2 | Dependencies + Chromium | `npm install` (the `postinstall` hook installs Playwright's Chromium) |
-| 3 | A real RosiFit account (super admin) | 10-digit mobile number + 4-digit PIN |
-| 4 | That account is **not** in "must change PIN" state | If it is, sign in by hand once in a normal browser and set the PIN, then re-run |
-| 5 | Network access to `https://rosi-fit.vercel.app` | — |
-| 6 | *Optional:* a clone of the app repo | Enables the git-diff skip filter; without it every flow simply runs |
-| 7 | *Optional:* staff account | Only needed for flows declaring `auth: staff` |
+| 3 | An app profile | `apps/<app-id>/app.config.json` — copy `apps/_template` (§2.1) |
+| 4 | Credentials for each account the profile names | In `apps/<app-id>/.env` only |
+| 5 | Network access to the app's `baseUrl` | — |
+| 6 | *Optional:* a clone of the app repo | Enables the git-diff skip filter; without it every flow runs |
+| 7 | *Optional:* a dummy account in a separate test tenant | Only needed for write flows (§4.3) |
 
 Verify the setup before the first capture:
 
 ```bash
-npm run typecheck && npm test && npm run validate
+npm run typecheck && npm test && npm run validate -- --app my-app
 ```
 
 ---
 
 ## 2. Inputs
 
-### 2.1 `.env` (required — never committed)
+### 2.1 The app profile — `apps/<app-id>/`
 
-Copy `.env.example` to `.env` and fill it in.
+Start from the template:
+
+```bash
+cp -r apps/_template apps/my-app
+cp apps/my-app/.env.example apps/my-app/.env
+```
+
+| File | Purpose |
+|---|---|
+| `app.config.json` | App identity and behaviour. Every field is explained in its `$comment` keys |
+| `.env` | This app's credentials. **Never committed.** The only place credentials are read from |
+| `flows/<module>.<flow>.yaml` | Flow manifests |
+| `flows/_drafts/` | Discovery and recorder drafts — never executed |
+| `config/routes.map.json` | Module → flows → app source globs. A flow's `module` must exist here |
+| `config/known_routes.json` | The app's routes; `npm run discover` adds to it |
+| `config/pii-regions.json` | Evidence-mode PII classification: data regions and the label allowlist |
+| `config/manual-review-items.json` | Open questions carried into the evidence index |
+| `fingerprints/baseline.json`, `last-run.json` | Written by runs |
+| `.auth/<identity>.json` | Saved sessions — **secret**, written by sign-in |
+| `docs/<Device>/<module>.md` | Generated documentation |
+| `recordings/<module>.<flow>.json` | Recorder output |
+
+`app.config.json` essentials:
+
+| Field | Meaning |
+|---|---|
+| `appName`, `appDescription` | Display name and one-line description; used in doc intros and LLM prompts |
+| `baseUrl` | Where the app runs. `APP_URL` in `.env` may override it (still host-gated) |
+| `allowedHosts` | The safety gate refuses any other target host |
+| `writeAllowedHosts` | Hosts where dummy write flows may write (subset of `allowedHosts`) |
+| `repoPath`, `repoBranch` | App repo clone for change detection (`APP_REPO_PATH` in `.env` overrides) |
+| `framework` | `react-native-web`, `nextjs`, `react`, `vue`, `angular`, `svelte`, `other` — switches framework-specific behaviour |
+| `theme`, `locale`, `timezone` | What the emulated browser reports |
+| `loginAdapter` | `email-password`, `username-password` or `mobile-pin`, with its selectors and options |
+| `accounts` | Identity → `.env` names of its login and secret; `optional: true` skips its flows when unset |
+| `defaultAccount` | Identity for flows without `auth:` (never `dummy`) |
+| `dummyAccount` | Expected tenant id + name after the dummy signs in, and how to read them; `messagingSuppressed` |
+| `dataIsolation` | `separate-project` \| `separate-tenant` \| `none`. Default `none` — **refuses every write** |
+| `outboundKillSwitch` | Dated attestation that outbound messaging is off, e.g. `{ "email": "EMAIL_PROVIDER=dev", "verifiedOn": "2026-09-25" }` |
+
+### 2.2 Shared settings — root `.env` (optional)
+
+Copy `.env.example` to `.env`. Shared, app-independent settings only; no
+credentials (any set here are ignored).
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `APP_URL` | The app to capture | `https://rosi-fit.vercel.app` |
-| `ALLOWED_APP_HOSTS` | Safety gate allowlist; a host outside it aborts the run | `rosi-fit.vercel.app,localhost,127.0.0.1` |
-| `SIGNIN_MOBILE` / `SIGNIN_PIN` | Super-admin credentials. **Secrets** — redacted from every manifest, log and doc | *(empty)* |
-| `STAFF_MOBILE` / `STAFF_PIN` | Staff credentials; `auth: staff` flows are skipped without them | *(empty)* |
-| `FIXED_COURSE_ID` / `FIXED_MEMBER_ID` | Pin flows to one record so new data cannot shift what is captured | *(empty)* |
-| `APP_REPO_PATH` / `APP_REPO_BRANCH` | Local clone of the app repo for change detection. On Windows use forward slashes and **no quotes** | *(empty)* / `main` |
-| `RUNS_RETENTION_DAYS` | Age at which `runs/` entries are pruned | `30` |
+| `APP` | App profile, when not passed as `--app` | *(none — required)* |
+| `DEVICES` | Device ids from `config/devices.json`, or `all` | ask, or the config default |
+| `RUNS_RETENTION_DAYS` | Age at which `runs/<app-id>/` entries are pruned | `30` |
 | `HEADLESS` | `false` to watch the browser | `true` |
-| `VIEWPORT_WIDTH` / `VIEWPORT_HEIGHT` | Capture viewport | `390` / `844` |
-| `DEVICE_SCALE_FACTOR` | Pixel density; the C1 gate enforces it on every frame | `2` |
-| `COLOR_SCHEME` | Emulated OS theme (`dark` / `light`) | `dark` |
+| `COLOR_SCHEME` | Override the profile's theme | profile `theme` |
 | `SLOW_MO_MS`, `STEP_TIMEOUT_MS` | Pacing and per-step timeout | `0`, `15000` |
-| `ANTHROPIC_API_KEY`, `LLM_MODEL` | Optional, for generated doc prose and discovery drafts | *(empty)*, `claude-sonnet-5` |
-| `DISCOVERY_LLM_SEND_PAGE_CONTENT` | Keep `false` — `true` would send page HTML (with member data) to an LLM | `false` |
+| `ANTHROPIC_API_KEY`, `LLM_MODEL` | Optional, for doc prose and discovery drafts | *(empty)*, `claude-sonnet-5` |
+| `DISCOVERY_LLM_SEND_PAGE_CONTENT` | Keep `false` — `true` sends page HTML (possibly personal data) to an LLM | `false` |
 
-### 2.2 Flow manifests — `flows/{module}.{flow}.yaml`
+### 2.3 App `.env` — `apps/<app-id>/.env`
 
-One file per flow; the unit of work. Schema reference: [flows/_SCHEMA.md](flows/_SCHEMA.md).
-Worked example: [flows/attendance.course-detail.yaml](flows/attendance.course-detail.yaml).
+| Variable | Meaning |
+|---|---|
+| the `userEnv` / `secretEnv` of each account | Logins and secrets. **Redacted** from every manifest, log and doc |
+| `WRITE_MODE` | `dummy` enables dummy write flows; anything else (default) keeps them off |
+| `APP_URL` | Optional preview deployment instead of `baseUrl` |
+| `APP_REPO_PATH`, `APP_REPO_BRANCH` | Optional app repo clone. On Windows use forward slashes and **no quotes** |
+| any `extraEnvVars` | Values flows may interpolate, e.g. a pinned record id |
 
-### 2.3 Config files — `config/`
+### 2.4 Devices — `config/devices.json`
 
-| File | Purpose | Who edits it |
-|---|---|---|
-| `routes.map.json` | Module → flows → app source paths. A flow's `module` must exist here | You, when adding a module |
-| `known_routes.json` | Routes discovery knows about | `npm run discover`, or you |
-| `pii-regions.json` | Capture-time PII classification: data regions and the label allowlist | You, after reviewing `label-review.txt` |
-| `manual-review-items.json` | Open questions carried into the evidence index for a human to settle | You, when resolving an item |
+Shared by every app: `Mobile` (390x844 @2x, touch), `Tablet` (820x1180 @2x,
+touch), `Laptop` (1440x900 @2x, desktop browser). Adding one is one entry.
 
 ---
 
 ## 3. Templates
 
-### 3.1 New flow (`flows/{module}.{flow}.yaml`)
+### 3.1 New flow (`apps/<app-id>/flows/<module>.<flow>.yaml`)
 
 ```yaml
 schema_version: 2
-module: attendance            # must be a key in config/routes.map.json
-flow: my-flow                 # must be listed under that module's `flows`
+module: settings              # must be a key in config/routes.map.json
+flow: edit-profile            # listed under that module's `flows`
 title: Short human name       # required in v2
 description: One line; appears in the generated docs.
 scenario_class: happy         # happy | validation | duplicate | empty | permission | offline
-auth: admin                   # admin | staff | none
-audience: academy owner
+auth: admin                   # an account from app.config.json, or none
 settle_ms: 600
 
 depends_on_routes:
-  - /courses
+  - /settings
 
 steps:
-  - id: 010-open-list         # numbered, hand-assigned: the id is the filename stem
+  - id: 010-open-settings     # numbered, hand-assigned: the id is the filename stem
     action: goto
-    value: /courses
-    label: The course list
+    value: /settings
+    label: The settings screen
     screenshot: false
-    settle_ms: 1200
     assert:
-      selector_visible: '[data-testid="courses-add"]'
+      selector_visible: '[data-testid="settings-edit"]'
 
   - id: 020-open-form
     action: click
-    selector: '[data-testid="courses-add"]'
-    label: Add Course — the empty form (never saved)
-    expect_screen: course-form-empty     # names the screen; C2 needs this to make the frame canonical
-    screenshot: full                     # viewport | full | auto | element:<selector> | false
-    optional: false                      # true = a failure here is recorded and the flow continues
+    selector: '[data-testid="settings-edit"]'
+    label: Edit profile — the form (never saved)
+    expect_screen: profile-form        # names the screen; C2 needs this to make the frame canonical
+    screenshot: full                   # viewport | full | auto | element:<selector> | false
     assert:
-      selector_visible: '[data-testid="course-close"]'
+      selector_visible: '[data-testid="profile-cancel"]'
 ```
 
 Rules worth knowing before you write one:
 
 - **`expect_screen` is what names a screen.** Without it, C2 cannot make the
-  frame canonical evidence — it will not invent a name.
-- **`optional: true`** keeps a flaky or conditional step from failing the flow. It
-  is then excluded from required coverage.
-- **Any `type`/`fill` step needs `run_tag: false`**, asserting the value creates no
-  record. `run_tag: true` is a hard validation error — this project never writes.
-- Selectors should be `data-testid` based. An exemption needs `selector_exempt`
-  with a reason, and `validate` warns about it on every run.
+  frame canonical evidence.
+- **`optional: true`** keeps a flaky or conditional step from failing the flow.
+- **Every `type`/`fill` step needs `run_tag`**: `false` for a search, filter or
+  sign-in field; `true` only in a dummy write flow, with `{{RUN_TAG}}` in the value.
+- Selectors are `data-testid` or `role=…[name=…]`. An exemption needs
+  `selector_exempt` with a reason, and `validate` warns about it on every run.
 
-### 3.2 New PII data region (`config/pii-regions.json`)
+### 3.2 New dummy write flow
 
-```json
-{ "id": "course-branch-field", "class": "O", "match": { "testid": "course-branch-field" } }
+```yaml
+schema_version: 2
+module: orders
+flow: create-order
+title: Create an order
+auth: dummy                    # the only identity that may write
+writes: true                   # required on any flow that writes
+sends_messages: [email]        # declare outbound messages; skipped unless the dummy tenant is muted
+# A step that CONFIRMS a send must declare `sends: true`; it is blocked unless
+# app.config.json carries an outboundKillSwitch attestation — dummy mode included.
+steps:
+  - id: 010-new
+    action: goto
+    value: /orders/new
+  - id: 020-name
+    action: type
+    selector: '[data-testid="order-name"]'
+    value: "Order {{RUN_TAG}}"   # every created record carries the run id
+    run_tag: true
+  - id: 030-email
+    action: type
+    selector: '[data-testid="order-email"]'
+    value: buyer@example.com     # synthetic contact data only
+    run_tag: false
+  - id: 040-save
+    action: click
+    selector: '[data-testid="order-save"]'
+    creates_data: true
+    screenshot: viewport
+teardown:                        # required: delete what this run tagged
+  - id: 900-open
+    action: goto
+    value: /orders?search={{RUN_TAG}}
+  - id: 910-delete
+    action: click
+    selector: '[data-testid="order-delete"]'   # runs only while the run tag is on screen
 ```
 
-`class`: `P` member/customer data · `O` organisation data · `I` operator identifier.
+### 3.3 New PII data region (`config/pii-regions.json`)
+
+```json
+{ "id": "customer-name", "class": "P", "match": { "testid": "customer-name" } }
+```
+
+`class`: `P` customer/member data · `O` organisation data · `I` operator identifier.
 `match`: `testid`, or `testid_family` (ending `-*`), or `role` + `name_regex`.
 
-### 3.3 New review item (`config/manual-review-items.json`)
+### 3.4 New review item (`config/manual-review-items.json`)
 
 ```json
 {
-  "id": "R-C2-003",
+  "id": "R-C2-001",
   "topic": "short-slug",
   "status": "open",
   "origin": "where the question came from",
@@ -152,8 +224,8 @@ Rules worth knowing before you write one:
 }
 ```
 
-To close one: set `status` to `resolved`, write the decision in `resolution`, and
-rebuild the index.
+To close one: set `status` to `resolved`, write the decision in `resolution`,
+and rebuild the index.
 
 ---
 
@@ -162,113 +234,132 @@ rebuild the index.
 ### Step 0 — Validate (always, before anything else)
 
 ```bash
-npm run validate
+npm run validate -- --app my-app
 ```
 
-Checks every manifest against the schema, the selector policy and the read-only
-rule. **Fix all errors before capturing.** Nothing is written.
+Checks the profile and its login adapter, every manifest against the schema,
+the selector policy and the write rules, and the host gate. **Fix all errors
+before capturing.** Nothing is written.
 
 ### Step 1 — Plan without a browser (optional)
 
 ```bash
-npm run capture:dry
+npm run capture:dry -- --app my-app --all-devices
 ```
-
-Prints which flows would run and why. No browser, no writes to the app.
 
 ### Step 2 — Routine capture
 
 ```bash
-npm run capture                      # only flows whose app code changed
-npm run capture:all                  # every flow, ignoring the skip filter
-npm run capture:module -- attendance # one module
-npm run capture -- --flow attendance/course-detail --headed
+npm run capture -- --app my-app --all-devices                 # flows whose app code changed
+npm run capture:all -- --app my-app --all-devices             # every flow
+npm run capture -- --app my-app --device Mobile --module settings
+npm run capture -- --app my-app --flow settings/edit-profile --headed
 ```
 
-Writes `screenshots/`, `runs/`, and updates `fingerprints/`. **The git diff of
-`screenshots/` after a run is the change signal:** an empty diff means nothing
-moved.
-
-If a change is real and expected, accept it as the new normal:
+Writes `runs/my-app/<run-id>/` and updates `apps/my-app/fingerprints/`. A step
+reported `changed` means its DOM moved since the accepted baseline. If the
+change is real and expected, accept it:
 
 ```bash
-npm run baseline:accept                 # everything
-npm run baseline:accept -- --module attendance   # one module
+npm run baseline:accept -- --app my-app                     # the latest run, everything
+npm run baseline:accept -- --app my-app --module settings --device Laptop
 ```
 
 ### Step 3 — Evidence run (the input to the manual pipeline)
 
 ```bash
-npm run capture:evidence -- --flow signin/sign-in-journey --flow attendance/courses-workspace --flow attendance/course-detail
+npm run capture:evidence -- --app my-app --device Mobile --flow signin/sign-in-journey
 ```
 
 Runs every selected flow regardless of the skip filter and writes **only** into
-`evidence/<run_id>/`. `screenshots/`, `runs/` and the fingerprint baseline are
-never touched. Note the run id it prints (e.g. `2026-09-15T12-13-39Z`).
+`evidence/my-app/<run-id>/`. `runs/` and the fingerprint baseline are never
+touched. Note the run id it prints.
 
 ### Step 4 — C1 gate: evidence check
 
 ```bash
-npm run evidence:check -- --require signin/sign-in-journey,attendance/courses-workspace,attendance/course-detail
+npm run evidence:check -- --app my-app --run <run-id> --require signin/sign-in-journey
 ```
 
 Verifies structure, privacy (no secret, identifier, email or phone anywhere),
-frames, coverage and that each required flow ran. Exit 0 = PASS.
+frames, coverage, and that each required flow ran. Exit 0 = PASS. On flows
+captured as the dummy account, email/phone shapes are reported as warnings
+(the data is synthetic); secrets and identifiers are errors everywhere.
 
 ### Step 5 — C1 gate: review the labels **by hand**
 
-Open `evidence/<run_id>/label-review.txt`. It lists every text classified as an
-application label. **Nothing in it may be a person, an email, a phone number or
-record data.**
+Open `evidence/my-app/<run-id>/label-review.txt`. It lists every text classified
+as an application label. **Nothing in it may be a person, an email, a phone
+number or record data.** If something is wrong, add a `data_region` to the
+app's `config/pii-regions.json` and re-run Steps 3-5.
 
-If something is wrong: add a `data_region` to `config/pii-regions.json`, then
-**re-run Steps 3–5**. Do not proceed until the file is clean.
-
-### Step 6 — C2: build the evidence index
+### Step 6 — C2: build and check the evidence index
 
 ```bash
-npm run evidence:index -- --run <run_id> --require signin/sign-in-journey,attendance/courses-workspace,attendance/course-detail
+npm run evidence:index -- --app my-app --run <run-id> --require signin/sign-in-journey
+npm run evidence:index:check -- --app my-app --run <run-id> --require signin/sign-in-journey
 ```
 
-Classifies every captured frame and selects canonical evidence.
+Then read `evidence/my-app/<run-id>/c2/coverage.txt` and settle open review items.
 
-### Step 7 — C2 gate: check the index
+### Step 7 — Generate documentation
 
 ```bash
-npm run evidence:index:check -- --run <run_id> --require signin/sign-in-journey,attendance/courses-workspace,attendance/course-detail
+npm run docs -- --app my-app
 ```
 
-Re-derives every verdict from the C1 evidence, rebuilds the index to prove it is
-deterministic, and verifies coverage, provenance and privacy. Exit 0 = PASS.
+Writes `apps/my-app/docs/<Device>/<module>.md` from the latest run.
 
-Then read `evidence/<run_id>/c2/coverage.txt` and settle any open review items.
+### 4.3 Dummy-account writes
 
-### Step 8 — Generate documentation
+1. **Prove the isolation before claiming it.** Set `dataIsolation` to
+   `separate-project` (own deployment and database) or `separate-tenant` (a real
+   tenant boundary). It defaults to `none`, which **refuses every write**.
+   A login is not isolation: a single-tenant app cannot be `separate-tenant`,
+   however many accounts it has — check the schema for a tenant column before
+   you answer.
+2. **Attest the kill switch.** Fill in `outboundKillSwitch`, naming the control
+   that switches outbound messaging off for this target and the date you checked
+   it: `{ "email": "EMAIL_PROVIDER=dev", "verifiedOn": "2026-09-25" }`. Without
+   it, writes are refused and so is any step declared `sends: true`.
+3. Fill in `dummyAccount.fingerprint` (the tenant id and name the app shows
+   after sign-in, and where to read them), the dummy credentials in `.env`, and
+   the dummy tenant's host in `writeAllowedHosts`.
+4. Set `messagingSuppressed: true` only if the dummy tenant cannot send email,
+   SMS or WhatsApp.
+5. Run with `WRITE_MODE=dummy` in `apps/my-app/.env`.
 
-```bash
-npm run docs
-```
+> **Synthetic contact data is hygiene, not a safety control.** `@example.com`
+> addresses and 555 phone numbers keep invented records obviously fake and keep
+> evidence clean — but the app will still *attempt* delivery to them, and most
+> apps have no reserved-domain filter. The only thing that stops a message
+> reaching a real person is the provider-level kill switch you attested in
+> step 2. A step that confirms a send must declare `sends: true`, and is blocked
+> without that attestation **in every mode, dummy included**.
 
-Writes `docs/{module}.md` from the latest run manifests and screenshots.
+The runner signs in as the dummy **before any flow acts** and compares the
+tenant exactly. Any failed gate aborts the whole run; nothing is written.
+Write flows that would send messages from an unmuted tenant are skipped and
+listed under `flagged` in `run-summary.json`.
 
 ### Adding a new flow
 
 ```bash
-npm run discover                                    # crawl navigation; drafts land in flows/_drafts/
-npm run record -- --flow attendance.my-flow         # record by hand -> recordings/{module}.{flow}.json
-npm run record:convert -- --flow attendance.my-flow # convert the recording into a draft manifest
-npm run record:diff -- --flow attendance.my-flow    # re-record later and compare
+npm run discover -- --app my-app                                 # drafts land in flows/_drafts/
+npm run record -- --app my-app --flow settings.edit-profile      # record by hand
+npm run record:convert -- --app my-app --flow settings.edit-profile
+npm run record:diff -- --app my-app --flow settings.edit-profile
 ```
 
-Drafts are **never executed** from `flows/_drafts/`. Review, resolve every
-`TODO_SELECTOR`, set `run_tag: false` on typing steps, delete the GENERATED
-header, move the file to `flows/`, then `npm run validate`.
+Drafts are **never executed**. Review, resolve every `TODO_SELECTOR`, answer
+`run_tag` on typing steps, delete the GENERATED header, move the file into
+`flows/`, then validate.
 
 ### Housekeeping
 
 ```bash
-npm run prune          # drop runs/ entries older than RUNS_RETENTION_DAYS
-npm test               # 185 unit tests
+npm run prune -- --app my-app     # drop runs older than RUNS_RETENTION_DAYS
+npm test                          # offline, against the synthetic Sample App profile
 npm run typecheck
 ```
 
@@ -278,33 +369,30 @@ npm run typecheck
 
 | Path | Written by | Contents | Commit? |
 |---|---|---|---|
-| `screenshots/{module}/{flow}/{step}.{mode}.png` | `capture` | `mode` = `viewport`, `full`, `element`, `failed`, `loading` | Yes — the diff is the signal |
-| `runs/{YYYY-MM-DD}/{module}-{flow}.flow-run.json` | `capture` | Step-by-step record of the run | Yes |
-| `runs/{YYYY-MM-DD}/run-summary.json` | `capture` | Totals for the run | Yes |
-| `fingerprints/baseline.json` | `capture`, `baseline:accept` | Accepted DOM hash per step | Yes |
-| `fingerprints/last-run.json` | `capture` | Last successful run and app SHA | Yes |
-| `docs/{module}.md` | `docs` | Screenshot-illustrated walkthrough | Yes |
-| `recordings/{flow}.json` | `record` | Raw recording | Yes |
-| `flows/_drafts/*.yaml` | `discover`, `record:convert` | Unreviewed drafts, never executed | Review first |
-| `config/known_routes.json` | `discover` | Routes discovery has seen | Yes |
-| `.auth/*.json` | sign-in | Live session state — **secret** | **Never** |
+| `runs/<app-id>/<run-id>/<Device>/<module>/<flow>/<step>.<mode>.png` | `capture` | `mode` = `viewport`, `full`, `element`, `failed`, `loading` | No |
+| `runs/<app-id>/<run-id>/<Device>/<module>-<flow>.flow-run.json` | `capture` | Step-by-step record | No |
+| `runs/<app-id>/<run-id>/run-summary.json` | `capture` | Totals, write mode, run tag, flagged flows | No |
+| `apps/<app-id>/fingerprints/baseline.json` | `capture`, `baseline:accept` | Accepted DOM hash per `<Device>/<module>/<flow>/<step>` | Local |
+| `apps/<app-id>/fingerprints/last-run.json` | `capture` | Last successful run and app SHA | Local |
+| `apps/<app-id>/docs/<Device>/<module>.md` | `docs` | Screenshot-illustrated walkthrough | Local |
+| `apps/<app-id>/recordings/*.json` | `record` | Raw recording (values redacted) | Local |
+| `apps/<app-id>/flows/_drafts/*.yaml` | `discover`, `record:convert` | Unreviewed drafts, never executed | Review first |
+| `apps/<app-id>/.auth/*.json` | sign-in | Live session state — **secret** | **Never** |
 
-### Evidence run — `evidence/<run_id>/`
+`apps/*` except `apps/_template/` is gitignored, as are `runs/` and `evidence/`.
 
-Gitignored: raw frames can contain personal data.
+### Evidence run — `evidence/<app-id>/<run-id>/`
 
 | Path | Contents |
 |---|---|
-| `{module}/{flow}/{step}.pre.png` / `.post.png` | Evidence frames, before and after each step |
-| `{module}/{flow}/{step}.evidence.json` | Classified census, inventory, target, URL, visual state, assertions |
-| `screenshots/{module}/{flow}/{step}.{mode}.png` | The executor's documentation shots for this run |
-| `runs/{module}-{flow}.flow-run.json` | Flow manifests for this run |
-| `run-summary.json`, `evidence-summary.json` | Run totals; frame and class counts |
-| **`label-review.txt`** | **Every text classified as a label — the file you review by hand (Step 5)** |
+| `<Device>/<module>/<flow>/<step>.pre.png` / `.post.png` | Evidence frames, before and after each step |
+| `<Device>/<module>/<flow>/<step>.evidence.json` | Classified census, inventory, target, URL, visual state, assertions |
+| `<Device>/screenshots/<module>/<flow>/…` | The executor's documentation shots for this run |
+| `runs/<Device>/<module>-<flow>.flow-run.json` | Flow manifests for this run |
+| `run-summary.json`, `evidence-summary.json` | Run totals; frame and class counts; which flows were dummy |
+| **`label-review.txt`** | **Every text classified as a label — reviewed by hand (Step 5)** |
 | `evidence-check.json` | C1 gate result |
-| `c2/evidence-index.json` | The Evidence Index: every frame, classified, with provenance |
-| `c2/coverage.txt` | Human-readable coverage and canonical choices |
-| `c2/index-check.json` | C2 gate result |
+| `c2/…` | The evidence index, coverage and the C2 gate result |
 
 ---
 
@@ -324,26 +412,16 @@ A gate that fails stops the line. Fix the cause, re-run from the capture step.
 
 ## 7. Limits you should know about
 
-1. **One application, onboarded by hand.** The safety gate, sign-in (mobile +
-   4-digit PIN, with hard-coded selectors), interstitials, discovery and the PII
-   patterns are RosiFit-specific. Onboarding another app you own currently means
-   forking the repo and editing code.
-2. **No proof that every page was captured.** `config/known_routes.json` is
-   hand-maintained: it lists 20 routes, while the app repo defines 31 route files.
-   Nothing compares the two, so a page added to the app is missed silently.
-   `npm run discover` only finds pages reachable from the live navigation.
-3. **One device profile, never asked for.** Every run emulates a Pixel 7 phone.
-   Changing `VIEWPORT_WIDTH` resizes the window but the context still reports a
-   mobile user agent and touch support, so a "laptop" capture is not a truthful
-   one. Outputs carry no device folder, so a second device would overwrite the
-   first and collide with the fingerprint baseline.
-4. **Canonical is not publishable.** In the evidence index, `canonical` means
+1. **No proof that every page was captured.** `known_routes.json` is maintained
+   by hand and by `discover`, which only finds pages reachable from the live
+   navigation. Nothing yet compares it against the app repo's route files.
+2. **The C2 evidence index is not device-aware yet.** C1 evidence is written
+   per device (`<Device>/…`); `evidence:index` still expects the older
+   single-device layout. Run C2 on single-device evidence until it is updated.
+3. **Canonical is not publishable.** In the evidence index, `canonical` means
    "the right frame to use". Frames flagged `redaction-required` still contain
    personal data and must be redacted before anyone outside sees them.
-5. **Sign-in touches a real account.** Capture is otherwise read-only.
-
-Limits 1-3 are addressed in
-[docs/PROPOSAL-any-app-any-device.md](docs/PROPOSAL-any-app-any-device.md),
-awaiting your review: device types you are asked to choose (written to
-`screenshots/{Device}/{module}/...`), a route inventory generated from the app
-repo, and a page-coverage report.
+4. **Sign-in touches real accounts.** Capture with them is otherwise read-only.
+5. **The phone-number shape used by the evidence PII checks is fixed** (a
+   10-digit mobile with an optional country prefix). Apps whose users have
+   other number formats need that pattern extended in `src/manual/`.

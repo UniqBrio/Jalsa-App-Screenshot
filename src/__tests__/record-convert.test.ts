@@ -69,7 +69,7 @@ function rec(events: RecordedEvent[], over: Partial<Recording> = {}): Recording 
     flow: 'students.add-student',
     module: 'students',
     recorded_at: '2026-08-19T00:00:00.000Z',
-    app_url: 'https://rosi-fit.vercel.app',
+    app_url: 'https://fixture.test',
     identity: 'admin',
     viewport: { width: 1280, height: 900 },
     start_url: '/students',

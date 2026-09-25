@@ -103,7 +103,7 @@ test('a module missing from routes.map.json is rejected', () => {
 
 test('an invalid auth value is rejected', () => {
   const errors = validateFlow(baseFlow({ auth: 'owner' as never }), 'f.yaml', routesMap);
-  assert.ok(errors.some((e) => e.includes('is not one of admin | staff | none')));
+  assert.ok(errors.some((e) => e.includes('is not one of admin | staff | dummy | none')));
 });
 
 test('mask must be an array, not a bare string', () => {

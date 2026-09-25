@@ -27,7 +27,7 @@ export type SampleEnd = 'stable' | 'navigation' | 'next-event' | 'no-change' | '
 
 export interface OverlayState {
   open: boolean;
-  /** Stable identity of the topmost overlay, e.g. `testid:modal-add-student`. */
+  /** Stable identity of the topmost overlay, e.g. `testid:modal-add-item`. */
   key: string | null;
   /** A selector that resolves to it, when one is derivable. */
   selector: string | null;

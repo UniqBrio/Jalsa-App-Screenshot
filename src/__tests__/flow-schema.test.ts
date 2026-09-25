@@ -396,7 +396,7 @@ test('a type step without run_tag is rejected, in v1 and v2 alike', () => {
   assert.ok(v1errors.some((e) => e.includes('requires run_tag')));
 });
 
-test('run_tag: true is rejected — this project never writes to the live app', () => {
+test('run_tag: true is rejected on a real-account flow — real logins never write', () => {
   const errors = errorsFor(
     v2([{ id: '010-a', action: 'type', selector: '[data-testid="n"]', value: '{{RUN_TAG}}x', run_tag: true }]),
   );
@@ -426,7 +426,7 @@ test('creates_data: true is a hard error, in any block', () => {
   assert.ok(errors.some((e) => e.includes('READ-ONLY') && e.includes('900-z')));
 });
 
-test('a leftover cleanup block from the UniqBrio engine is rejected', () => {
+test('a leftover cleanup block from an older engine is rejected', () => {
   const flow = v2([{ id: '010-a', action: 'click', selector: '[data-testid="n"]' }]) as unknown as Record<string, unknown>;
   flow.cleanup = { tag_prefix: 'SCRSHOT_', tables: ['members'], delete_after_run: true };
   const errors = errorsFor(flow as never);

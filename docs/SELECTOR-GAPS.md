@@ -1,36 +1,40 @@
-# Selector Gaps — testids the app needs
+# Selector gaps — test ids an app still needs
 
-Targets in the capture flows that have **neither a `testID` nor a usable
-accessible name (`accessibilityRole` + `accessibilityLabel`)** in the RosiFit
-app. Per the selector policy we do **not** fall back to CSS / XPath / nth-child
-/ text — instead the step takes a `selector_exempt` (or is left out) and the
-gap is recorded here so the `testID` can be added to
-https://github.com/UniqBrio/RosiFit.
+Flows may only use `[data-testid="…"]` or `role=<role>[name="…"]` selectors.
+When a control a flow needs has **neither a test id nor a usable accessible
+name**, we do not fall back to CSS, XPath, `nth-child` or text. The step takes a
+`selector_exempt` with a reason (validate warns about it on every run), or is
+left out, and the gap is recorded so the test id can be added to the app.
 
-First written 2026-09-12 from the app source (commit `0e262dd`), before any
-run against the live app. Expect this list to grow after the first headed run.
+Keep one gap list **per app**, next to its profile:
+`apps/<app-id>/docs/SELECTOR-GAPS.md` (local, like the rest of the profile).
+
+## What counts as a gap
+
+- **No test id and no name.** An icon-only button, an unlabelled row, a custom
+  control with no role. Nothing on policy can target it: blocking.
+- **A name that carries data.** `role=button[name="Notifications, 3"]` works
+  until the count changes; the flow has to fall back to a regex on the stable
+  prefix. Works, but fragile: request a test id.
+- **An ambiguous prefix.** `[data-testid^="order-"]` also matches
+  `order-search` and `order-filter`, so a prefix cannot pick "the first order
+  row". Request a distinct prefix such as `order-row-<id>`.
+- **Several ids for one control.** The same Back button with a different id in
+  each state of a screen. Request one id, or keep its name stable.
+
+## Template
+
+```markdown
+| Flow | Where | Element | Has now | Requested test id |
+|---|---|---|---|---|
+| `settings/team` | `/settings/team` | Member rows | label only, starts with the person's name | `team-row-<id>` |
+| `orders/list` | `/orders` | Search box | `aria-label="Search orders"` — fine, but copy can change | `orders-search` |
+```
 
 ## How to clear a gap
-1. Add the requested `testID` to the element in the app repo.
-2. Re-point / re-enable the step in the flow manifest.
-3. Re-run `npm run capture -- --headed --flow <mod>/<flow>` and confirm it passes.
 
----
-
-## Known gaps (from the source read)
-
-| Flow | Where | Element | Has now | Requested `testID` |
-|---|---|---|---|---|
-| `more/more-menu` | `/more` | The settings rows (Branches, Staff & access, …) | `accessibilityRole="button"` + label `"<Label>, <meta>"` — usable via `role=button[name=/^Branches/]`, but the meta (a count, a theme name) is part of the name | `more-row-<slug>` |
-| `more/more-menu` | `/more` | The account card | label `"<name>, <role>. Open your profile"` — matched on its suffix | `more-profile` |
-| `more/*`, `signin/*` | floating pill on tab screens | Home · Reports · More | `role="tab"` + label only (the `shell-nav-*` ids exist only on pushed screens) | `nav-pill-<label>` everywhere |
-| `members/*`, `weekly/*` | `/members`, `/weekly` | Member rows (`MemberRow`) | one-sentence label starting with the name — matched on `" expected, "` | `member-row-<id>` |
-| `attendance/course-detail` | `/course/[id]` | Roster member rows | `course-member-<id>` exists, but `course-member-` is also the prefix of `-search`, `-select-`, `-edit-` … so a prefix match cannot pick a row; matched by label `", active. "` instead | a distinct prefix, e.g. `course-row-<id>` |
-| `members/member-directory` | `/members` | Search box | `accessibilityLabel="Search members"` — fine, but a `testID` would survive a copy change | `members-search` |
-| `members/member-directory` | `/members` | Add button | `<Button label="Add">` — name only | `members-add` |
-| `more/profile` | `/profile` | Change My PIN | `<Button label="Change My PIN">` — name only | `profile-change-pin` |
-| `signin/forgot-pin` | `/forgot-pin` | Back to sign in | four different ids across the screen's states (`forgot-pin-back`, `-requested-back`, `-staff-back`, `-locked-back`) — matched by name | one id, or keep the name stable |
-| `notifications/*` | header sheet | Close control | the scrim, labelled `"Close Notifications"` | `sheet-close` |
-
-None of these blocks a flow today: every one has an on-policy role/name
-selector. They are listed because a name is a piece of copy, and copy changes.
+1. Add the requested test id to the element in the app repo (React:
+   `data-testid`; React Native / react-native-web: `testID`).
+2. Re-point the step to it and drop any `selector_exempt`.
+3. Re-run it: `npm run capture -- --app <app-id> --flow <module>/<flow> --headed`.
+4. Remove the row from the app's gap list.

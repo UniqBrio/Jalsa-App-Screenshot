@@ -24,14 +24,16 @@ export default defineConfig({
     // The env-driven viewport/deviceScaleFactor below deliberately override the
     // preset's own values so 390x844 @2x stays the single source of truth.
     ...devices['Pixel 7'],
-    baseURL: process.env.APP_URL ?? 'https://rosi-fit.vercel.app',
+    // The capture engine takes the target from the selected app profile
+    // (apps/<app-id>/app.config.json); this only serves ad-hoc CLI use.
+    baseURL: process.env.APP_URL,
     headless: process.env.HEADLESS !== 'false',
     viewport: {
       width: Number(process.env.VIEWPORT_WIDTH ?? 390),
       height: Number(process.env.VIEWPORT_HEIGHT ?? 844),
     },
     deviceScaleFactor: Number(process.env.DEVICE_SCALE_FACTOR ?? 2),
-    colorScheme: process.env.COLOR_SCHEME === 'light' ? 'light' : 'dark',
+    colorScheme: process.env.COLOR_SCHEME === 'dark' ? 'dark' : 'light',
     isMobile: true,
     hasTouch: true,
     ignoreHTTPSErrors: false,

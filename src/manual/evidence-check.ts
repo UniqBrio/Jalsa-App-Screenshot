@@ -6,7 +6,10 @@
  * Structure    every *.evidence.json validates against the schema (evidence-types.ts)
  * Privacy      no secret or operator identifier value appears in ANY file (text, JSON, or a file
  *              name), no email/phone-shaped string appears in any JSON or text file, raw text
- *              exists only on class L entries (enforced by the schema validator)
+ *              exists only on class L entries (enforced by the schema validator). In a flow
+ *              captured as the dummy account the data is synthetic, so an email/phone shape
+ *              there is a warning, not a failure — secrets and identifiers stay errors.
+ * Usage        npm run evidence:check -- --app <id> --run <run_id>
  * Frames       every referenced PNG exists, its IHDR size matches the record, its DPR matches
  *              DEVICE_SCALE_FACTOR
  * Coverage     every ok interaction in the steps phase has a before-frame and a described target
@@ -18,7 +21,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { env, identifierValues, paths, secretValues, type IdentifierValue } from '../env';
+import { env, identifierValues, paths, profile, secretValues, type IdentifierValue } from '../env';
 import { writeJson } from '../fsx';
 import { log } from '../logger';
 import type { FlowRun } from '../types';
@@ -35,10 +38,28 @@ export interface CheckFinding {
 
 export interface CheckOptions {
   runDir: string;
+  /** Fallback density, used only when a run predates device profiles. */
   expectedDpr: number;
+  /** Device id -> its deviceScaleFactor. A frame is checked against its own device. */
+  deviceDpr?: Record<string, number>;
+  /** The app profile's phone shape. Absent: phone-shaped text is not scanned for. */
+  phonePattern?: string | null;
   requireFlows?: string[];
   identifiers?: IdentifierValue[];
   secrets?: string[];
+  /** `<Device>/<module>/<flow>` keys captured as the dummy account. Default: read from evidence-summary.json. */
+  dummyFlows?: string[];
+}
+
+/** Device id -> its expected pixel density, from config/devices.json. */
+export function deviceDprMap(): Record<string, number> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { loadDevicesConfig } = require('../devices') as typeof import('../devices');
+    return Object.fromEntries(loadDevicesConfig().devices.map((d) => [d.id, d.dpr]));
+  } catch {
+    return {};
+  }
 }
 
 export interface CheckResult {
@@ -49,7 +70,11 @@ export interface CheckResult {
 }
 
 const EMAIL = /[^\s@"'<>]+@[^\s@"'<>]+\.[A-Za-z]{2,}/;
-const PHONE = /(?<![0-9A-Za-z])(?:\+?91[\s-]*)?[6-9][0-9]{4}[\s-]?[0-9]{5}(?![0-9A-Za-z])/;
+/** Built from the app profile's pii.phonePattern; no profile pattern, no phone scan. */
+function phoneRegex(source: string | null | undefined): RegExp | null {
+  if (!source) return null;
+  try { return new RegExp(source); } catch { return null; }
+}
 /** HMAC / sha256 digests, optionally `sha256:`-prefixed or `#`-shortened — never user text. */
 const DIGEST = /^(?:sha256:|#)?[0-9a-f]{12,64}$/;
 
@@ -83,9 +108,15 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
     return { passed: false, files: 0, steps: 0, findings };
   }
 
-  const identifiers = (opts.identifiers ?? identifierValues()).filter((i) => i.digits.length === 10);
+  const identifiers = opts.identifiers ?? identifierValues();
   const secrets = (opts.secrets ?? secretValues()).filter((s) => s.length >= 3);
-  const idPatterns = identifiers.map((i) => ({ name: i.name, re: new RegExp(i.digits.split('').join('[\\s-]*')) }));
+  const escape = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const idPatterns = identifiers
+    .filter((i) => i.digits.length >= 7 || (i.text ?? '').length >= 3)
+    .map((i) => ({ name: i.name, re: i.digits ? new RegExp(i.digits.split('').join('[\\s-]*')) : new RegExp(escape(i.text!), 'i') }));
+  const dummyFlows = opts.dummyFlows ?? readDummyFlows(opts.runDir);
+  const inDummyFlow = (r: string) => dummyFlows.some((k) => r.startsWith(`${k}/`));
+  const PHONE = phoneRegex(opts.phonePattern);
   const files = walk(opts.runDir).filter((f) => path.basename(f) !== 'evidence-check.json');
   let steps = 0;
 
@@ -101,8 +132,10 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
       for (const p of idPatterns) if (p.re.test(s)) add('privacy-identifier', r, `contains the ${p.name} value${where}`);
       // A 4-digit PIN would match inside any hex digest, so digests are skipped and the boundary is alphanumeric.
       for (const sec of secrets) if (new RegExp(`(?<![0-9A-Za-z])${sec}(?![0-9A-Za-z])`).test(s)) add('privacy-secret', r, `contains a secret (PIN) value${where}`);
-      if (EMAIL.test(s)) add('privacy-email', r, `email-shaped string${where}`);
-      if (PHONE.test(s)) add('privacy-phone', r, `phone-shaped string${where}`);
+      // Synthetic data on a dummy flow: still reported, never a blocker.
+      const shape = inDummyFlow(r) ? 'warn' : 'error';
+      if (EMAIL.test(s)) add('privacy-email', r, `email-shaped string${where}`, shape);
+      if (PHONE?.test(s)) add('privacy-phone', r, `phone-shaped string${where}`, shape);
     };
 
     if (ext === '.txt') { scan(text, ''); continue; }
@@ -128,7 +161,11 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
         const size = pngSize(fs.readFileSync(png));
         if (size.width !== frame.image.width || size.height !== frame.image.height) add('frame-size', r, `${phase}.frame.image does not match the PNG`);
       } catch { add('frame-size', r, `${phase}.frame is not a readable PNG`); }
-      if (Math.abs(frame.dpr - opts.expectedDpr) > 0.01) add('frame-dpr', r, `${phase}.frame.dpr ${frame.dpr} ≠ expected ${opts.expectedDpr}`);
+      // Each device has its own density: a 1x laptop frame is not a faulty 2x phone frame.
+      const wantDpr = (ev.device ? opts.deviceDpr?.[ev.device] : undefined) ?? opts.expectedDpr;
+      if (Math.abs(frame.dpr - wantDpr) > 0.01) {
+        add('frame-dpr', r, `${phase}.frame.dpr ${frame.dpr} ≠ expected ${wantDpr}${ev.device ? ` for device ${ev.device}` : ''}`);
+      }
       if (!frame.stable) add('frame-unstable', r, `${phase}.frame was captured before the page settled (${frame.stability_reason})`, 'warn');
     }
 
@@ -142,15 +179,35 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
   }
 
   const runsDir = path.join(opts.runDir, 'runs');
+  // Manifests sit in runs/<Device>/ (one per device the run captured), or
+  // directly in runs/ for a run from before devices existed.
+  const deviceDirs = fs.existsSync(runsDir)
+    ? fs.readdirSync(runsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => path.join(runsDir, e.name))
+    : [];
   for (const req of opts.requireFlows ?? []) {
-    const file = path.join(runsDir, `${req.replace('/', '-')}.flow-run.json`);
-    if (!fs.existsSync(file)) { add('required-flow', req, 'required flow has no run manifest in this evidence run'); continue; }
-    const run = JSON.parse(fs.readFileSync(file, 'utf8')) as FlowRun;
-    if (run.status === 'failed') add('required-flow', req, `required flow failed: ${run.errors.length} error(s)`);
+    const name = `${req.replace('/', '-')}.flow-run.json`;
+    const files = [runsDir, ...deviceDirs].map((d) => path.join(d, name)).filter((f) => fs.existsSync(f));
+    if (!files.length) { add('required-flow', req, 'required flow has no run manifest in this evidence run'); continue; }
+    for (const file of files) {
+      const run = JSON.parse(fs.readFileSync(file, 'utf8')) as FlowRun;
+      if (run.status === 'failed') add('required-flow', req, `required flow failed${run.device ? ` on ${run.device}` : ''}: ${run.errors.length} error(s)`);
+    }
   }
 
   if (steps === 0) add('run', rel(opts.runDir), 'no step evidence found');
   return { passed: !findings.some((f) => f.severity === 'error'), files: files.length, steps, findings };
+}
+
+/** Flow keys the evidence run recorded as captured by the dummy account. */
+function readDummyFlows(runDir: string): string[] {
+  const file = path.join(runDir, 'evidence-summary.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const summary = JSON.parse(fs.readFileSync(file, 'utf8')) as { flows?: Array<{ device: string; module: string; flow: string; dummy?: boolean }> };
+    return (summary.flows ?? []).filter((f) => f.dummy === true).map((f) => `${f.device}/${f.module}/${f.flow}`);
+  } catch {
+    return [];
+  }
 }
 
 function latestRun(): string | null {
@@ -171,6 +228,8 @@ if (require.main === module) {
     const result = checkEvidenceRun({
       runDir,
       expectedDpr: env.browser.deviceScaleFactor,
+      deviceDpr: deviceDprMap(),
+      phonePattern: profile.pii.phonePattern,
       requireFlows: (val('--require') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     });
     writeJson(path.join(runDir, 'evidence-check.json'), result);

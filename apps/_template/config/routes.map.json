@@ -1,0 +1,17 @@
+{
+  "$comment": [
+    "module -> { flows it owns, source paths in the app repo that can affect it }.",
+    "source_paths are glob patterns matched against `git diff --name-only` of the app repo",
+    "(repoPath / APP_REPO_PATH). No matching diff since the last successful run => the module is",
+    "skipped at zero cost. Changes under _global invalidate every module. Err broad: a glob that",
+    "is too narrow means a missed change, which is the failure mode that matters."
+  ],
+  "_global": {
+    "flows": [],
+    "source_paths": ["package.json", "src/app/layout.*", "src/components/**"]
+  },
+  "home": {
+    "flows": ["home-overview"],
+    "source_paths": ["src/app/page.*", "src/features/home/**"]
+  }
+}

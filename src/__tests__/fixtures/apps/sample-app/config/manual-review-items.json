@@ -1,0 +1,32 @@
+{
+  "$comment": [
+    "Synthetic review items for the Sample App fixture."
+  ],
+  "items": [
+    {
+      "id": "R-C2-001",
+      "topic": "placeholder-example-name",
+      "status": "open",
+      "origin": "Sample App fixture",
+      "question": "The Add Member form's placeholders use a person-shaped example name. It is fixed app copy, not record data, but a real member may share the name. Show it verbatim in the manual, or use a neutral example?",
+      "match": {
+        "texts": [
+          "e.g. Anitha R",
+          "e.g. Anitha Rajesh"
+        ]
+      },
+      "resolution": null
+    },
+    {
+      "id": "R-C2-002",
+      "topic": "record-screen-query-id",
+      "status": "open",
+      "origin": "Sample App fixture",
+      "question": "A route whose record id is in the query string is not treated as a record screen, so static-control can label saved field values as L. Adopt the classifier change?",
+      "match": {
+        "record_screen_query_id": true
+      },
+      "resolution": null
+    }
+  ]
+}

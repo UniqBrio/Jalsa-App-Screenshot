@@ -11,7 +11,7 @@
  */
 export type StepAction =
   // ── v2 ─────────────────────────────────────────────────────────────────────
-  | 'goto'               // navigate to a path (relative to TEST_APP_URL)
+  | 'goto'               // navigate to a path (relative to the app's base URL)
   | 'click'
   | 'type'               // clear + pressSequentially — real per-character key events
   | 'select'             // <select> option by value/label
@@ -114,16 +114,24 @@ export interface FlowStep {
   /** If true, a failure here logs and continues instead of aborting the flow. */
   optional?: boolean;
   /**
-   * Marks a step that writes data. This project is READ-ONLY against the live
-   * RosiFit app, so `true` is a hard validation error — the field exists so a
-   * recorder draft can flag a suspected write for a human to remove.
+   * This step CONFIRMS an outbound message (the second press that actually
+   * sends an email, SMS, WhatsApp or push). It is refused unless the app
+   * profile carries an outboundKillSwitch attestation — in dummy mode too,
+   * because a separate tenant still sends to whatever address it holds.
+   */
+  sends?: boolean;
+  /**
+   * Marks a step that writes data. Allowed only in a flow that declares
+   * `writes: true` and `auth: dummy` (see write-gates.ts); anywhere else it is
+   * a hard validation error. A recorder draft also uses it to flag a suspected
+   * write for a human to review.
    */
   creates_data?: boolean;
   /**
    * `type`/`fill` only. Does the value this step enters create a record?
-   *   false — it does not (a search box, a filter, the sign-in number)
-   *   true  — it does; a hard error here, because this project never writes
-   *           to the live app
+   *   false — it does not (a search box, a filter, the sign-in field)
+   *   true  — it does: the value must contain {{RUN_TAG}} so the record is
+   *           identifiable by run id, and the flow must be a dummy write flow
    *   'TODO' — emitted by the recorder's converter; a human has not decided yet
    * The converter cannot know which typed value creates a record, so it refuses
    * to guess and leaves the marker for review.
@@ -176,11 +184,23 @@ export interface Flow {
   /** Default settle time (ms) after every step in this flow. Default 350. */
   settle_ms?: number;
   /**
-   * Which auth identity the runner signs in AS.
-   *   admin — the super admin (default). staff — optional, needs STAFF_* in .env.
-   *   none  — a FRESH, signed-out context per flow (for the sign-in screens).
+   * Which identity the runner signs in AS: an account name from the app
+   * profile (apps/<app-id>/app.config.json `accounts`), or `none` for a FRESH,
+   * signed-out context per flow (sign-in screens). Absent means the profile's
+   * `defaultAccount`. Only `dummy` may ever write.
    */
-  auth?: 'admin' | 'staff' | 'none';
+  auth?: string;
+  /**
+   * This flow creates records. Requires `auth: dummy`, and at run time
+   * WRITE_MODE=dummy, a write-allowed host and a verified dummy tenant.
+   * A write flow must have a `teardown` that deletes what it tagged.
+   */
+  writes?: boolean;
+  /**
+   * Outbound channels a write flow triggers. Such a flow is skipped (and
+   * flagged in the run report) unless the dummy tenant's messaging is off.
+   */
+  sends_messages?: MessageChannel[];
   /** App routes this flow exercises — documentation + discovery cross-check. */
   depends_on_routes?: string[];
   /** Flow-local variables, interpolatable as {{name}}. Env vars win on collision. */
@@ -196,11 +216,17 @@ export interface Flow {
   /** Runs before `steps`. Same vocabulary; screenshots default to off. */
   setup?: FlowStep[];
   steps: FlowStep[];
-  /** Runs after `steps`, including after a failure. Failures here never fail the flow. */
+  /**
+   * Runs after `steps`, including after a failure. Failures here never fail
+   * the flow. In a write flow, every interactive teardown step requires the
+   * run tag to be on screen, so only records this run created can be deleted.
+   */
   teardown?: FlowStep[];
   /** Relative path the flow was loaded from — injected by the loader. */
   _sourcePath?: string;
 }
+
+export type MessageChannel = 'email' | 'sms' | 'whatsapp' | 'push';
 
 export type StepStatus = 'ok' | 'failed' | 'skipped';
 
@@ -247,15 +273,23 @@ export interface FlowRun {
   steps: StepResult[];
   screenshots: string[];
   errors: string[];
+  /** Present only on a dummy write flow that passed every write gate. */
+  write_mode?: 'dummy';
 }
 
 export interface RunSummary {
   run_id: string;
+  /** apps/<app-id> the run targeted. */
+  app_id: string;
   started_at: string;
   finished_at: string;
   app_git_sha: string | null;
   app_repo_available: boolean;
   env: { app_url: string; app_host: string };
+  /** `dummy` only when write flows were allowed to run. */
+  write_mode: 'dummy' | 'off';
+  /** The marker every record created by this run carries. */
+  run_tag: string;
   totals: {
     flows_total: number;
     flows_run: number;
@@ -266,6 +300,8 @@ export interface RunSummary {
   };
   devices: string[];
   flows: Array<Pick<FlowRun, 'module' | 'flow' | 'device' | 'status' | 'reason' | 'duration_ms'>>;
+  /** Flows that were skipped for a safety reason a human must look at. */
+  flagged: Array<{ module: string; flow: string; reason: string }>;
 }
 
 export interface RoutesMapEntry {

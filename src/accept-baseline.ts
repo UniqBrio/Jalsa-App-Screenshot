@@ -6,44 +6,34 @@
  * that is the whole failure mode this project exists to avoid.
  *
  * Usage:
- *   npm run baseline:accept                       # latest run, all changed steps
- *   npm run baseline:accept -- --module attendance
- *   npm run baseline:accept -- --device Laptop
- *   npm run baseline:accept -- --date 2026-08-10
+ *   npm run baseline:accept -- --app <id>                       # latest run, all changed steps
+ *   npm run baseline:accept -- --app <id> --module <module>
+ *   npm run baseline:accept -- --app <id> --device Laptop
+ *   npm run baseline:accept -- --app <id> --run 2026-08-10T01-30-00Z
+ *   npm run baseline:accept -- --app <id> --date 2026-08-10     # latest run that day
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { paths } from './env';
+import { env, paths } from './env';
 import { readJson, listFiles } from './fsx';
 import { log } from './logger';
 import { loadBaseline, saveBaseline, fingerprintKey, updateFingerprint } from './fingerprint';
+import { pickRun } from './prune-runs';
 import type { FlowRun } from './types';
-
-function latestRunDate(): string | null {
-  if (!fs.existsSync(paths.runs)) return null;
-  const days = fs
-    .readdirSync(paths.runs, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(e.name))
-    .map((e) => e.name)
-    .sort();
-  return days.length ? days[days.length - 1] : null;
-}
 
 function run(): void {
   const argv = process.argv.slice(2);
-  const dIdx = argv.indexOf('--date');
-  const mIdx = argv.indexOf('--module');
-  const vIdx = argv.indexOf('--device');
-  const date = dIdx >= 0 ? argv[dIdx + 1] : latestRunDate();
-  const moduleFilter = mIdx >= 0 ? argv[mIdx + 1] : null;
-  const deviceFilter = vIdx >= 0 ? argv[vIdx + 1] : null;
+  const val = (flag: string) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] : null; };
+  const runId = pickRun({ run: val('--run'), date: val('--date') });
+  const moduleFilter = val('--module');
+  const deviceFilter = val('--device');
 
-  if (!date) { log.warn('No run history found.'); return; }
+  if (!runId) { log.warn(`No matching run under runs/${env.appId}/.`); return; }
 
-  const dayDir = path.join(paths.runs, date);
-  // runs/<date>/<Device>/<module>-<flow>.flow-run.json
-  const deviceDirs = fs.existsSync(dayDir)
-    ? fs.readdirSync(dayDir, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => path.join(dayDir, e.name))
+  const runDir = path.join(paths.runs, runId);
+  // runs/<app>/<run-id>/<Device>/<module>-<flow>.flow-run.json
+  const deviceDirs = fs.existsSync(runDir)
+    ? fs.readdirSync(runDir, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => path.join(runDir, e.name))
     : [];
   const runs = deviceDirs
     .flatMap((d) => listFiles(d, ['.flow-run.json']))
@@ -67,7 +57,7 @@ function run(): void {
   }
 
   saveBaseline(baseline);
-  log.banner(`Baseline updated — ${accepted} fingerprint(s) accepted from runs/${date}`);
+  log.banner(`Baseline updated — ${accepted} fingerprint(s) accepted from runs/${env.appId}/${runId}`);
 }
 
 if (require.main === module) run();

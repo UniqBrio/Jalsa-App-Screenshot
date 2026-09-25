@@ -31,8 +31,9 @@ export async function newContext(browser: Browser, storageStatePath?: string, de
     userAgent: device ? emulated?.userAgent : devices['Pixel 7'].userAgent,
     isMobile: device ? device.isMobile : true,
     hasTouch: device ? device.hasTouch : true,
-    locale: 'en-IN',
-    timezoneId: 'Asia/Kolkata',
+    // From the app profile, so dates and numbers render the way the app's users see them.
+    locale: env.browser.locale,
+    timezoneId: env.browser.timezone,
     reducedMotion: 'reduce', // kills animation-induced screenshot flake
     // Pinned so the app's "System" theme choice resolves the same way every run.
     colorScheme: env.browser.colorScheme,

@@ -16,7 +16,7 @@
  *                                          -> the literal TODO_SELECTOR
  * `npm run validate` turns all three into hard errors once the file is promoted.
  *
- * Usage: npm run record:convert -- --flow students.add-student
+ * Usage: npm run record:convert -- --flow settings.edit-profile
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -380,7 +380,7 @@ export function convertRecording(rec: Recording): ConvertResult {
   out.push(`flow: ${flowName}`);
   out.push(`title: ${q(title)}`);
   out.push(`description: ${q(`Recorded walkthrough of ${title.toLowerCase()} — draft, not reviewed`)}`);
-  out.push(`auth: ${rec.identity === 'staff' ? 'staff' : 'admin'}`);
+  out.push(`auth: ${rec.identity}`);
   out.push('settle_ms: 350');
   out.push('');
   out.push('depends_on_routes:');

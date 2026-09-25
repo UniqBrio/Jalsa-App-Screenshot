@@ -1,9 +1,16 @@
-# secrets
+# secrets — shared settings (root) and per-app credentials (apps/<app-id>/.env)
 .env
 .env.local
 *.key
 
-# auth state — contains a live session token for a REAL RosiFit account
+# App profiles are local: they hold real hosts, selectors, flows and saved
+# sessions. Only the documented template is committed.
+apps/*
+!apps/_template/
+apps/_template/.env
+apps/_template/.auth/
+
+# saved browser sessions — live sessions for real accounts
 .auth/
 storage-state.json
 
@@ -11,7 +18,7 @@ storage-state.json
 src/_recon.ts
 .recon/
 
-# throwaway environment probe (Phase 1 investigation) — regenerate, never commit
+# throwaway environment probe — regenerate, never commit
 src/_env-probe.ts
 
 # node
@@ -29,11 +36,14 @@ blob-report/
 Thumbs.db
 .DS_Store
 
+# Capture output: runs/<app-id>/<run-id>/<Device>/… — screenshots of real
+# accounts, never committed. The fingerprint baseline in apps/<app-id>/ is the
+# change signal.
+runs/*
+!runs/README.md
+
 # user manual pipeline — raw evidence frames and JSON can hold personal data;
 # the DOCX is a release artifact, not a repo file
 evidence/
 manual/build/*/images/
 manual/build/**/*.docx
-
-# NOTE: screenshots/, runs/, fingerprints/ and docs/ are INTENTIONALLY tracked.
-# They are the product of this project — the daily commit diff is the signal.

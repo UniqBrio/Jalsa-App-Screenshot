@@ -25,12 +25,12 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { env, paths } from '../env';
+import { env, paths, profile } from '../env';
 import { writeJson, relPosix } from '../fsx';
 import { log } from '../logger';
 import type { Flow, FlowRun } from '../types';
 import { PRE_FRAME_ACTIONS } from './evidence-capture';
-import { checkEvidenceRun } from './evidence-check';
+import { checkEvidenceRun, deviceDprMap } from './evidence-check';
 import type { StepEvidence } from './evidence-types';
 import {
   buildEvidenceIndex,
@@ -65,8 +65,10 @@ export interface IndexCheckResult {
 }
 
 export interface IndexCheckOptions extends BuildOptions {
+  /** The app profile's phone shape, for the C1 scan. */
+  phonePattern?: string | null;
   /** Passed through to the C1 privacy scan. */
-  identifiers?: Array<{ name: string; digits: string }>;
+  identifiers?: Array<{ name: string; digits: string; text?: string }>;
   secrets?: string[];
 }
 
@@ -112,9 +114,16 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
   // ── every captured frame indexed, exactly once ─────────────────────────────
   const onDiskPngs = walk(o.runDir).filter((f) => f.toLowerCase().endsWith('.png'));
   const indexed = new Map<string, IndexedFrame>();
+  const seenIds = new Set<string>();
   for (const f of index.frames) {
     if (indexed.has(f.file.path)) add('frames-indexed', f.file.path, 'indexed more than once');
     indexed.set(f.file.path, f);
+    // Two devices capturing the same step must not share a frame id.
+    if (seenIds.has(f.frame_id)) add('frames-indexed', f.frame_id, 'two frames share one frame_id');
+    seenIds.add(f.frame_id);
+    if (f.kind !== 'unreferenced' && f.device && !f.frame_id.startsWith(`${f.device}/`)) {
+      add('frames-indexed', f.frame_id, `frame_id does not start with its device "${f.device}"`);
+    }
   }
   for (const p of onDiskPngs) if (!indexed.has(p)) add('frames-indexed', p, 'a captured PNG is missing from the index');
   for (const f of index.frames) if (!onDiskPngs.includes(f.file.path)) add('frames-indexed', f.file.path, 'indexed frame does not exist in the run');
@@ -124,7 +133,7 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
   for (const rel of walk(o.runDir).filter((f) => f.endsWith('.evidence.json'))) {
     const buf = fs.readFileSync(path.join(o.runDir, rel));
     const doc = JSON.parse(buf.toString('utf8')) as StepEvidence;
-    evidenceDocs.set(`${doc.module}/${doc.flow}/${doc.step_id}`, { doc, rel, sha: sha256(buf) });
+    evidenceDocs.set(`${doc.device}/${doc.module}/${doc.flow}/${doc.step_id}`, { doc, rel, sha: sha256(buf) });
     if (doc.run_id !== runId) add('provenance', rel, `evidence run_id ${doc.run_id} does not match the run directory`);
     for (const [pointer, frame] of [['before.frame', doc.before.frame], ['after.frame', doc.after.frame]] as const) {
       if (!frame) continue;
@@ -135,12 +144,14 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
     }
   }
 
-  const runs = new Map<string, { run: FlowRun; rel: string; sha: string }>();
+  // runs/<Device>/<module>-<flow>.flow-run.json — keyed by device AND flow.
+  const runs = new Map<string, { run: FlowRun; rel: string; sha: string; device: string }>();
   const runsDir = path.join(o.runDir, 'runs');
-  for (const name of fs.existsSync(runsDir) ? fs.readdirSync(runsDir).filter((f) => f.endsWith('.flow-run.json')).sort() : []) {
-    const buf = fs.readFileSync(path.join(runsDir, name));
+  for (const rel of walk(runsDir).filter((f) => f.endsWith('.flow-run.json'))) {
+    const buf = fs.readFileSync(path.join(runsDir, rel));
     const run = JSON.parse(buf.toString('utf8')) as FlowRun;
-    runs.set(`${run.module}/${run.flow}`, { run, rel: `runs/${name}`, sha: sha256(buf) });
+    const device = run.device ?? rel.split('/')[0] ?? '';
+    runs.set(`${device}/${run.module}/${run.flow}`, { run, rel: `runs/${rel}`, sha: sha256(buf), device });
     for (const step of run.steps) {
       for (const recorded of step.screenshot_paths ?? []) {
         const rel = runRelative(recorded, o.runDir, o.repoRoot);
@@ -157,9 +168,9 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
     if (sha256(buf) !== f.file.png_sha256) add('provenance', f.file.path, 'file hash does not match the index');
     if (buf.length !== f.file.bytes) add('provenance', f.file.path, 'file size does not match the index');
 
-    const key = f.flow && f.step ? `${f.flow}/${f.step.id}` : null;
+    const key = f.flow && f.step ? `${f.device}/${f.flow}/${f.step.id}` : null;
     const rec = key ? evidenceDocs.get(key) : undefined;
-    const runRec = f.flow ? runs.get(f.flow) : undefined;
+    const runRec = f.flow ? runs.get(`${f.device}/${f.flow}`) : undefined;
     const runStep = runRec?.run.steps.find((s) => s.id === f.step?.id);
     const raw: string[] = [];
     if (runStep && runStep.status !== 'ok') raw.push(`step ${runStep.status}`);
@@ -187,8 +198,8 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
   // ── manifest / flow-run / evidence agreement ───────────────────────────────
   for (const flow of index.flows) {
     const manifest = o.flows.find((m) => `${m.module}/${m.flow}` === flow.flow) ?? null;
-    const runRec = runs.get(flow.flow);
-    if (!runRec) { add('provenance', flow.flow, 'no flow-run manifest'); continue; }
+    const runRec = runs.get(`${flow.device}/${flow.flow}`);
+    if (!runRec) { add('provenance', `${flow.device}/${flow.flow}`, 'no flow-run manifest'); continue; }
     if (flow.flow_run_sha256 !== runRec.sha) add('provenance', flow.flow, 'flow-run manifest hash does not match the index');
     if (manifest) {
       const steps = [...(manifest.setup ?? []), ...(manifest.steps ?? []), ...(manifest.teardown ?? [])];
@@ -207,11 +218,14 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
     }
   }
 
-  // ── required coverage, re-derived ──────────────────────────────────────────
-  for (const key of o.requiredFlows.slice().sort()) {
-    const manifest = o.flows.find((m) => `${m.module}/${m.flow}` === key);
+  // ── required coverage, re-derived, per device ──────────────────────────────
+  const devicesInRun = Array.from(new Set(Array.from(runs.values()).map((r) => r.device))).sort();
+  if (!devicesInRun.length) add('coverage', runId, 'no flow-run manifest in this evidence run');
+  for (const device of devicesInRun) for (const flowKey of o.requiredFlows.slice().sort()) {
+    const key = `${device}/${flowKey}`;
+    const manifest = o.flows.find((m) => `${m.module}/${m.flow}` === flowKey);
     const runRec = runs.get(key);
-    if (!runRec) { add('coverage', key, 'required flow did not run in this evidence run'); continue; }
+    if (!runRec) { add('coverage', key, 'required flow did not run on this device'); continue; }
     if (runRec.run.status === 'failed') add('coverage', key, 'required flow failed');
     if (!manifest) continue;
     const required = (manifest.steps ?? []).filter((s) => s.optional !== true);
@@ -220,22 +234,22 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
       if (!rs) { add('coverage', `${key}/${s.id}`, 'required step did not run'); continue; }
       if (rs.status !== 'ok') add('coverage', `${key}/${s.id}`, `required step is ${rs.status}`);
       if (s.expect_screen) {
-        const canonical = index.frames.find((f) => f.flow === key && f.canonical_role === 'screen-state' && f.screen.name === s.expect_screen && f.step?.required);
+        const canonical = index.frames.find((f) => f.flow === flowKey && f.device === device && f.canonical_role === 'screen-state' && f.screen.name === s.expect_screen && f.step?.required);
         if (!canonical) add('coverage', `${key}/${s.expect_screen}`, 'no canonical screen-state frame from a required step');
       }
       if (PRE_FRAME_ACTIONS.has(s.action)) {
-        const control = index.frames.find((f) => f.flow === key && f.canonical_role === 'control-location' && f.step?.id === s.id);
+        const control = index.frames.find((f) => f.flow === flowKey && f.device === device && f.canonical_role === 'control-location' && f.step?.id === s.id);
         if (!control) add('coverage', `${key}/${s.id}`, 'no canonical control-location frame for a required interaction');
       }
     }
     // Optional steps must never be counted as required coverage.
-    const cov = index.coverage.find((c) => c.flow === key);
+    const cov = index.coverage.find((c) => c.flow === flowKey && c.device === device);
     if (!cov) add('coverage', key, 'no coverage entry in the index');
     else {
       if (cov.required_steps.total !== required.length) add('coverage', key, `required step total ${cov.required_steps.total} ≠ ${required.length} non-optional steps in the manifest`);
       const optionalIds = new Set((manifest.steps ?? []).filter((s) => s.optional === true).map((s) => s.id));
       for (const id of optionalIds) {
-        if (index.flows.find((f) => f.flow === key)?.steps.find((s) => s.id === id)?.required) add('coverage', `${key}/${id}`, 'an optional step is marked required');
+        if (index.flows.find((f) => f.flow === flowKey && f.device === device)?.steps.find((s) => s.id === id)?.required) add('coverage', `${key}/${id}`, 'an optional step is marked required');
       }
       for (const s of cov.optional_steps) if (!optionalIds.has(s.id)) add('coverage', `${key}/${s.id}`, 'reported as optional but the manifest does not mark it optional');
       if (!cov.complete) add('coverage', key, 'coverage is not complete');
@@ -246,6 +260,8 @@ export function checkEvidenceIndex(o: IndexCheckOptions): IndexCheckResult {
   const c1 = checkEvidenceRun({
     runDir: o.runDir,
     expectedDpr: o.expectedDpr,
+    deviceDpr: deviceDprMap(),
+    phonePattern: o.phonePattern,
     requireFlows: o.requiredFlows,
     identifiers: o.identifiers,
     secrets: o.secrets,
@@ -314,6 +330,7 @@ if (require.main === module) {
       manifestHashes: manifestHashes(flows),
       requiredFlows: requireFlows,
       expectedDpr: env.browser.deviceScaleFactor,
+      phonePattern: profile.pii.phonePattern,
       reviewItems: review.items,
       reviewItemsSha256: review.sha256,
       repoRoot: paths.root,

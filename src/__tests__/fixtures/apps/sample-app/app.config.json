@@ -1,0 +1,74 @@
+{
+  "$comment": "Synthetic profile for the unit tests. Every value is invented; the fixture app is served offline at https://fixture.test by fixtures/evidence-app.ts.",
+  "appName": "Sample App",
+  "appDescription": "A synthetic course-and-member app used only by the test suite.",
+  "baseUrl": "https://fixture.test",
+  "allowedHosts": [
+    "fixture.test",
+    "localhost",
+    "127.0.0.1"
+  ],
+  "writeAllowedHosts": [
+    "fixture.test"
+  ],
+  "framework": "react-native-web",
+  "theme": "dark",
+  "locale": "en-US",
+  "timezone": "UTC",
+  "docsAudience": "a test reader",
+  "loginAdapter": {
+    "type": "mobile-pin",
+    "selectors": {
+      "phone": "[data-testid=\"signin-phone\"]",
+      "continue": "[data-testid=\"signin-continue\"]",
+      "pin": "[data-testid=\"signin-pin\"]",
+      "signedIn": "[data-testid=\"shell-org\"]"
+    },
+    "options": {
+      "countryCode": "91",
+      "mobileDigits": 10,
+      "pinDigits": 4,
+      "loginPath": "/"
+    }
+  },
+  "accounts": {
+    "admin": {
+      "userEnv": "SIGNIN_MOBILE",
+      "secretEnv": "SIGNIN_PIN"
+    },
+    "staff": {
+      "userEnv": "STAFF_MOBILE",
+      "secretEnv": "STAFF_PIN",
+      "optional": true
+    },
+    "dummy": {
+      "userEnv": "DUMMY_MOBILE",
+      "secretEnv": "DUMMY_PIN",
+      "optional": true
+    }
+  },
+  "defaultAccount": "admin",
+  "dummyAccount": {
+    "fingerprint": {
+      "tenantId": "sample-tenant-0001",
+      "tenantName": "Sample Org (test)",
+      "tenantIdProbe": {
+        "selector": "[data-testid=\"shell-org\"]",
+        "attribute": "data-tenant-id"
+      },
+      "tenantNameProbe": {
+        "selector": "[data-testid=\"shell-org\"]"
+      }
+    },
+    "messagingSuppressed": false,
+    "syntheticPhones": []
+  },
+  "extraEnvVars": [
+    "FIXED_MEMBER_ID"
+  ],
+  "dataIsolation": "separate-project",
+  "outboundKillSwitch": {
+    "email": "EMAIL_PROVIDER=dev",
+    "verifiedOn": "2026-09-25"
+  }
+}

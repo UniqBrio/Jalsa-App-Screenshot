@@ -12,7 +12,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { paths, envInterpolationVars } from './env';
+import { paths, envInterpolationVars, profile } from './env';
+import { DUMMY_IDENTITY, NO_AUTH } from './profile';
+import { isWriteFlow, isWriteStep, syntheticDataProblems } from './write-gates';
 import { readJson, listFiles, relPosix } from './fsx';
 import { GENERATED_HEADER, TODO_SELECTOR } from './recording-types';
 import type {
@@ -52,8 +54,8 @@ const STEP_ID_RE = /^[0-9]{2,3}-[a-z0-9-]+$/;
  * Recorder drafts. These are NEVER loaded as executable flows — not by the
  * runner, not by doc-generator, not by discovery. loadFlows()
  * is the single choke point all four go through, so excluding them here is the
- * whole safety property: a draft full of TODOs cannot run, so it cannot leave
- * rows in TEST.
+ * whole safety property: a draft full of TODOs cannot run, so it cannot write
+ * anything anywhere.
  */
 const DRAFT_SUFFIX_RE = /\.generated\.(ya?ml)$/i;
 
@@ -319,8 +321,16 @@ export function validateFlow(flow: Flow, rel: string, routesMap: RoutesMap): str
     e.push(at('schema_version 2 requires a "title" — a short human name for the flow.'));
   }
 
-  if (flow.auth && !['admin', 'staff', 'none'].includes(flow.auth)) {
-    e.push(at(`auth "${flow.auth}" is not one of admin | staff | none.`));
+  const identities = [...Object.keys(profile.accounts), NO_AUTH];
+  if (flow.auth !== undefined && !identities.includes(flow.auth)) {
+    e.push(at(`auth "${flow.auth}" is not one of ${identities.join(' | ')} (the accounts in app.config.json, or none).`));
+  }
+  if (flow.writes !== undefined && typeof flow.writes !== 'boolean') e.push(at('"writes" must be true or false.'));
+  if (flow.sends_messages !== undefined) {
+    const channels = ['email', 'sms', 'whatsapp', 'push'];
+    if (!Array.isArray(flow.sends_messages) || !flow.sends_messages.every((c) => channels.includes(c))) {
+      e.push(at(`"sends_messages" must be a list of ${channels.join(' | ')}.`));
+    }
   }
   if (flow.scenario_class && !SCENARIO_CLASSES.includes(flow.scenario_class)) {
     e.push(
@@ -377,24 +387,68 @@ export function validateFlow(flow: Flow, rel: string, routesMap: RoutesMap): str
 
   const steps = allSteps(flow).filter((s) => s && typeof s === 'object');
 
-  // READ-ONLY, ALWAYS. This project drives the LIVE RosiFit app — there is no
-  // TEST project to write into and nothing to clean up afterwards. A flow that
-  // declares a write, in any block, is refused before a browser ever opens.
-  const writes = steps.filter((s) => s.creates_data || s.run_tag === true);
-  if (writes.length) {
-    e.push(
-      at(`declares ${writes.length} data-writing step(s) (${writes.map((s) => s.id).join(', ')}) — ` +
-        `this project is READ-ONLY against the live RosiFit app. Remove the step, or set ` +
-        `run_tag: false if the value only searches or filters.`),
-    );
-  }
+  // READ-ONLY unless dummy. A real login is permanently read-only: a flow that
+  // declares a write is refused before a browser ever opens, unless it is an
+  // explicit dummy write flow — and even then write-gates.ts re-checks at run
+  // time (WRITE_MODE, host, the signed-in tenant).
+  if (isWriteFlow(flow)) e.push(...validateWriteFlow(flow, steps, rel));
   if ((flow as { cleanup?: unknown }).cleanup !== undefined) {
     e.push(
-      at('has a "cleanup" block — there is no cleanup in this project because nothing may be ' +
-        'written. Delete the block; if the flow really writes, the flow itself must go.'),
+      at('has a "cleanup" block — there is no such block. A dummy write flow removes what it ' +
+        'created in "teardown"; a read-only flow has nothing to clean up.'),
     );
   }
 
+  return e;
+}
+
+/**
+ * The contract of a dummy write flow, checked offline. The run-time half
+ * (WRITE_MODE, write-allowed host, verified tenant) lives in write-gates.ts.
+ */
+function validateWriteFlow(flow: Flow, steps: FlowStep[], rel: string): string[] {
+  const e: string[] = [];
+  const at = (msg: string) => `${rel}: ${msg}`;
+  const writes = steps.filter(isWriteStep);
+
+  if (flow.auth !== DUMMY_IDENTITY) {
+    e.push(
+      at(`declares ${writes.length || 'a'} data-writing step(s)${writes.length ? ` (${writes.map((s) => s.id).join(', ')})` : ''} ` +
+        `but signs in as "${flow.auth ?? profile.defaultAccount}". Real logins are permanently READ-ONLY — ` +
+        `only "auth: ${DUMMY_IDENTITY}" (the dummy account in its own test tenant) may write. Remove the step, ` +
+        `or set run_tag: false if the value only searches or filters.`),
+    );
+    return e;
+  }
+  if (flow.writes !== true) {
+    e.push(at(`writes data (${writes.map((s) => s.id).join(', ')}) but does not declare "writes: true" at the top.`));
+  }
+  if (!profile.dummyAccount) {
+    e.push(at(`is a dummy write flow, but apps/${profile.id}/app.config.json has no "dummyAccount" section.`));
+  }
+  if (!(flow.teardown ?? []).length) {
+    e.push(at('is a write flow with no "teardown" — it must delete the records it tagged with {{RUN_TAG}}.'));
+  }
+  const tagged = steps.filter((s) => s.run_tag === true);
+  for (const s of tagged) {
+    if (!String(s.value ?? '').includes('{{RUN_TAG}}')) {
+      e.push(at(`${s._phase ?? 'steps'}[${s.id}]: run_tag: true, so its value must contain {{RUN_TAG}} — every created record carries the run id.`));
+    }
+  }
+  if (!tagged.length) {
+    e.push(at('writes data but no step types a value with run_tag: true — nothing it creates could be found by run id.'));
+  }
+  // Synthetic contact data only: every literal this flow types or declares.
+  const phones = profile.dummyAccount?.syntheticPhones ?? [];
+  const literals: Array<{ where: string; value: string }> = [
+    ...steps
+      .filter((s) => s.action === 'type' || s.action === 'fill')
+      .map((s) => ({ where: `${s._phase ?? 'steps'}[${s.id}]`, value: String(s.value ?? '') })),
+    ...Object.entries(flow.vars ?? {}).map(([k, v]) => ({ where: `vars.${k}`, value: String(v) })),
+  ];
+  for (const { where, value } of literals) {
+    for (const problem of syntheticDataProblems(value, phones)) e.push(at(`${where}: ${problem}`));
+  }
   return e;
 }
 
@@ -485,7 +539,7 @@ function validateStep(
 
   // run_tag: which typed values create records. The recorder's converter cannot
   // know, so it emits TODO; a human resolving it to true/false is what lets
-  // validate enforce the read-only contract instead of hoping for it.
+  // validate enforce the write contract instead of hoping for it.
   const isTextEntry = step.action === 'type' || step.action === 'fill';
   if (step.run_tag !== undefined) {
     if (!isTextEntry) {
@@ -495,9 +549,9 @@ function validateStep(
     }
   } else if (isTextEntry) {
     e.push(
-      `${where}: "${step.action}" requires run_tag: false — every typed value in this project ` +
-        `must be a search, a filter or the sign-in form, never something that creates a record. ` +
-        `Answering the question explicitly is what keeps a write from slipping in unnoticed.`,
+      `${where}: "${step.action}" requires run_tag — false for a search, a filter or a sign-in ` +
+        `field; true (with {{RUN_TAG}} in the value) only in a dummy write flow. Answering the ` +
+        `question explicitly is what keeps a write from slipping in unnoticed.`,
     );
   }
 
@@ -621,7 +675,7 @@ export function loadFlows(opts: { includeDisabled?: boolean } = {}): LoadResult 
         `${rel}: this looks like an unfinished recorder draft. Resolve every TODO_SELECTOR, ` +
           `set run_tag: false on each type step (or delete the step if it writes), write a real ` +
           `teardown, and delete the GENERATED header before promoting it. A flow that looks ` +
-          `complete but writes to the live app is worse than one that refuses to run.`,
+          `complete but writes to a real account is worse than one that refuses to run.`,
       );
       continue;
     }
@@ -659,9 +713,11 @@ export function loadFlows(opts: { includeDisabled?: boolean } = {}): LoadResult 
       continue;
     }
 
-    if (flow.auth === 'staff') {
+    const account = profile.accounts[flow.auth ?? profile.defaultAccount];
+    if (account?.optional) {
       warnings.push(
-        `${rel}: auth "staff" — runs only when STAFF_MOBILE / STAFF_PIN are set in .env; skipped otherwise.`,
+        `${rel}: auth "${flow.auth}" — runs only when ${account.userEnv} / ${account.secretEnv} are set ` +
+          `in apps/${profile.id}/.env; skipped otherwise.`,
       );
     }
 
@@ -676,7 +732,7 @@ export function loadFlows(opts: { includeDisabled?: boolean } = {}): LoadResult 
     for (const flowName of entry.flows ?? []) {
       if (!seen.has(`${module}/${flowName}`)) {
         warnings.push(
-          `config/routes.map.json declares "${module}/${flowName}" but no manifest exists for it yet.`,
+          `routes.map.json declares "${module}/${flowName}" but no manifest exists for it yet.`,
         );
       }
     }

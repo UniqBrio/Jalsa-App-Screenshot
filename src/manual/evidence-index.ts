@@ -89,9 +89,12 @@ export function parseReviewItems(raw: unknown, source = 'review items'): ReviewI
   return items;
 }
 
-export const REVIEW_ITEMS_FILE = path.join(paths.config, 'manual-review-items.json');
+/** apps/<app-id>/config/manual-review-items.json */
+export function reviewItemsFile(): string {
+  return paths.reviewItems;
+}
 
-export function loadReviewItems(file = REVIEW_ITEMS_FILE): { items: ReviewItemConfig[]; sha256: string | null } {
+export function loadReviewItems(file = reviewItemsFile()): { items: ReviewItemConfig[]; sha256: string | null } {
   if (!fs.existsSync(file)) return { items: [], sha256: null };
   const buf = fs.readFileSync(file);
   return { items: parseReviewItems(JSON.parse(buf.toString('utf8')), file), sha256: sha256(buf) };
@@ -171,8 +174,14 @@ export function runRelative(recorded: string, runDir: string, repoRoot: string):
   const abs = path.resolve(repoRoot, recorded);
   const rel = relPosix(runDir, abs);
   if (!rel.startsWith('..') && !path.isAbsolute(rel)) return rel;
-  const i = recorded.replace(/\\/g, '/').lastIndexOf('screenshots/');
-  return i >= 0 ? recorded.replace(/\\/g, '/').slice(i) : recorded;
+  // Anchor the fallback on the run id so the <Device>/ segment survives; anchoring
+  // on "screenshots/" would drop it and point at a frame that does not exist.
+  const posix = recorded.replace(/\\/g, '/');
+  const marker = `/${path.basename(runDir)}/`;
+  const at = posix.indexOf(marker);
+  if (at >= 0) return posix.slice(at + marker.length);
+  const i = posix.lastIndexOf('screenshots/');
+  return i >= 0 ? posix.slice(i) : posix;
 }
 
 // ─── build ───────────────────────────────────────────────────────────────────
@@ -193,6 +202,7 @@ export interface BuildOptions {
 
 interface StepContext {
   flowKey: string;
+  device: string;
   flow: Flow | null;
   run: FlowRun;
   runFile: string;
@@ -231,13 +241,15 @@ export function buildEvidenceIndex(o: BuildOptions): EvidenceIndex {
   const manifests = new Map(o.flows.map((f) => [`${f.module}/${f.flow}`, f]));
   const fileSha = (rel: string) => (fs.existsSync(path.join(o.runDir, rel)) ? sha256(fs.readFileSync(path.join(o.runDir, rel))) : null);
 
-  // Flow-run manifests, sorted by flow key.
+  // Flow-run manifests live in runs/<Device>/, one folder per device the run captured.
   const runsDir = path.join(o.runDir, 'runs');
-  const runs = (fs.existsSync(runsDir) ? fs.readdirSync(runsDir).filter((f) => f.endsWith('.flow-run.json')).sort() : [])
-    .map((name) => {
-      const buf = fs.readFileSync(path.join(runsDir, name));
+  const manifestRels = walkFiles(runsDir).filter((f) => f.endsWith('.flow-run.json')).map((f) => `runs/${f}`);
+  const runs = manifestRels
+    .map((rel) => {
+      const buf = fs.readFileSync(path.join(o.runDir, rel));
       const run = JSON.parse(buf.toString('utf8')) as FlowRun;
-      return { key: `${run.module}/${run.flow}`, run, file: `runs/${name}`, sha: sha256(buf) };
+      const device = run.device ?? rel.split('/')[1] ?? '';
+      return { key: `${device}/${run.module}/${run.flow}`, flowKey: `${run.module}/${run.flow}`, device, run, file: rel, sha: sha256(buf) };
     })
     .sort((a, b) => byCodepoint(a.key, b.key));
 
@@ -246,7 +258,7 @@ export function buildEvidenceIndex(o: BuildOptions): EvidenceIndex {
   const contexts: StepContext[] = [];
 
   for (const r of runs) {
-    const flow = manifests.get(r.key) ?? null;
+    const flow = manifests.get(r.flowKey) ?? null;
     const manifestSteps = flow ? [...(flow.setup ?? []), ...(flow.steps ?? []), ...(flow.teardown ?? [])] : [];
     let previous: StepContext | null = null;
     const flowSteps: IndexedFlowStep[] = [];
@@ -266,11 +278,11 @@ export function buildEvidenceIndex(o: BuildOptions): EvidenceIndex {
         status: result.status,
         expect_screen: result.next_screen ?? null,
       };
-      const docRel = `${r.run.module}/${r.run.flow}/${result.id}.evidence.json`;
+      const docRel = `${r.device}/${r.run.module}/${r.run.flow}/${result.id}.evidence.json`;
       const docAbs = path.join(o.runDir, docRel);
       const docBuf = result.phase === 'steps' && fs.existsSync(docAbs) ? fs.readFileSync(docAbs) : null;
       const ctx: StepContext = {
-        flowKey: r.key, flow, run: r.run, runFile: r.file, runSha: r.sha, index, result, manifestStep, step,
+        flowKey: r.flowKey, device: r.device, flow, run: r.run, runFile: r.file, runSha: r.sha, index, result, manifestStep, step,
         doc: docBuf ? (JSON.parse(docBuf.toString('utf8')) as StepEvidence) : null,
         docFile: docBuf ? docRel : null,
         docSha: docBuf ? sha256(docBuf) : null,
@@ -291,11 +303,12 @@ export function buildEvidenceIndex(o: BuildOptions): EvidenceIndex {
     });
 
     flows.push({
-      flow: r.key,
+      flow: r.flowKey,
+      device: r.device,
       title: flow?.title ?? null,
-      required: o.requiredFlows.includes(r.key),
+      required: o.requiredFlows.includes(r.flowKey),
       manifest_file: flow?._sourcePath ?? null,
-      manifest_sha256: o.manifestHashes[r.key] ?? null,
+      manifest_sha256: o.manifestHashes[r.flowKey] ?? null,
       flow_run_file: r.file,
       flow_run_sha256: r.sha,
       flow_run_status: r.run.status,
@@ -305,11 +318,13 @@ export function buildEvidenceIndex(o: BuildOptions): EvidenceIndex {
   }
 
   // Every PNG nobody references is still indexed — and excluded.
+  const knownDevices = new Set(runs.map((r) => r.device).filter(Boolean));
   const referenced = new Set(frames.map((f) => f.file.path));
   for (const rel of walkFiles(o.runDir).filter((f) => f.toLowerCase().endsWith('.png') && !referenced.has(f))) {
     const png = readPng(o.runDir, rel, pngCache);
     frames.push({
       frame_id: `file:${rel}`,
+      device: knownDevices.has(rel.split('/')[0]) ? rel.split('/')[0] : null,
       kind: 'unreferenced',
       file: { path: rel, png_sha256: png.sha, bytes: png.bytes, width: png.width, height: png.height },
       provenance: provenance(runId, 'none', null, null),
@@ -327,7 +342,9 @@ export function buildEvidenceIndex(o: BuildOptions): EvidenceIndex {
   const { vocabulary, excluded } = buildVocabulary(frames, contexts, o.reviewItems);
   const reviewItems = linkReviewItems(o.reviewItems, frames, contexts, vocabulary);
   const screens = screenCatalog(frames);
-  const coverage = o.requiredFlows.slice().sort(byCodepoint).map((key) => coverageFor(key, flows, frames));
+  const devicesInRun = uniqueSorted(flows.map((f) => f.device));
+  const coverage = (devicesInRun.length ? devicesInRun : ['']).flatMap((device) =>
+    o.requiredFlows.slice().sort(byCodepoint).map((key) => coverageFor(device, key, flows, frames)));
 
   const byKind = Object.fromEntries(FRAME_KINDS.map((k) => [k, 0])) as Record<FrameKind, number>;
   const bySuit = { canonical: 0, supporting: 0, excluded: 0 };
@@ -386,7 +403,8 @@ function framesForStep(ctx: StepContext, o: BuildOptions, cache: Map<string, Png
   const out: IndexedFrame[] = [];
   const runId = path.basename(o.runDir);
   const { doc, step } = ctx;
-  const idBase = `${ctx.flowKey}/${step.id}`;
+  // Device first: the same step on two devices must never share an id.
+  const idBase = `${ctx.device}/${ctx.flowKey}/${step.id}`;
   const ok = step.status === 'ok';
   const statusExclusion: ExclusionCode[] = step.status === 'failed' ? ['step-failed'] : step.status === 'skipped' ? ['step-skipped'] : [];
   const docErrors: ExclusionCode[] = doc && doc.evidence_errors.length ? ['evidence-reading-error'] : [];
@@ -456,6 +474,7 @@ function framesForStep(ctx: StepContext, o: BuildOptions, cache: Map<string, Png
       const purpose: EvidencePurpose = !ok ? 'failure-diagnostic' : isPre ? 'control-location' : 'step-result';
       out.push({
         frame_id: `${idBase}#${KIND_SUFFIX[kind]}`,
+        device: ctx.device,
         kind,
         file: { path: frame.path, png_sha256: png.sha, bytes: png.bytes, width: png.width, height: png.height },
         provenance: withManifest(provenance(runId, 'step-evidence', ctx, pointer)),
@@ -502,6 +521,7 @@ function framesForStep(ctx: StepContext, o: BuildOptions, cache: Map<string, Png
       : kind === 'capture-element' ? 'screen-element' : 'screen-viewport';
     out.push({
       frame_id: `${idBase}#${KIND_SUFFIX[kind]}`,
+      device: ctx.device,
       kind,
       file: { path: rel, png_sha256: png.sha, bytes: png.bytes, width: png.width, height: png.height },
       provenance: withManifest(provenance(runId, 'flow-run', ctx, null)),
@@ -659,11 +679,15 @@ function linkReviewItems(items: ReviewItemConfig[], frames: IndexedFrame[], cont
 }
 
 function screenCatalog(frames: IndexedFrame[]): ScreenCatalogEntry[] {
-  const names = uniqueSorted(frames.map((f) => f.screen.name).filter((n): n is string => !!n));
-  return names.map((name) => {
-    const own = frames.filter((f) => f.screen.name === name);
+  // A screen is catalogued per device: the same screen on a phone and a laptop
+  // is two different pictures, and each needs its own canonical frame.
+  const keys = uniqueSorted(frames.filter((f) => f.screen.name).map((f) => `${f.device ?? ''}\u0000${f.screen.name}`));
+  return keys.map((k) => {
+    const [device, name] = k.split('\u0000');
+    const own = frames.filter((f) => f.screen.name === name && (f.device ?? '') === device);
     return {
       name,
+      device,
       flows: uniqueSorted(own.map((f) => f.flow!).filter(Boolean)),
       frame_ids: own.map((f) => f.frame_id),
       // Frames are in flow-key then step order, so the first canonical is a stable choice.
@@ -672,12 +696,12 @@ function screenCatalog(frames: IndexedFrame[]): ScreenCatalogEntry[] {
   });
 }
 
-function coverageFor(key: string, flows: IndexedFlow[], frames: IndexedFrame[]): FlowCoverage {
-  const flow = flows.find((f) => f.flow === key);
+function coverageFor(device: string, key: string, flows: IndexedFlow[], frames: IndexedFrame[]): FlowCoverage {
+  const flow = flows.find((f) => f.flow === key && f.device === device);
   const byId = new Map(frames.map((f) => [f.frame_id, f]));
   if (!flow) {
     return {
-      flow: key, flow_run_status: null, flow_failed: true,
+      flow: key, device, flow_run_status: null, flow_failed: true,
       required_steps: { total: 0, ok: 0, not_ok: [] }, required_screens: { total: 0, covered: 0, missing: [] },
       required_interactions: { total: 0, covered: 0, missing: [] }, optional_steps: [], complete: false,
     };
@@ -687,12 +711,13 @@ function coverageFor(key: string, flows: IndexedFlow[], frames: IndexedFrame[]):
   // A required screen is covered only by a canonical frame from a required step.
   const screens = uniqueSorted(required.map((s) => s.expect_screen).filter((n): n is string => !!n));
   const missingScreens = screens.filter((name) => !frames.some((f) =>
-    f.flow === key && f.canonical_role === 'screen-state' && f.screen.name === name && f.step?.required));
+    f.flow === key && f.device === device && f.canonical_role === 'screen-state' && f.screen.name === name && f.step?.required));
   const interactions = required.filter((s) => s.interaction);
   const missingControls = interactions.filter((s) => !s.canonical_control_frame).map((s) => s.id);
   const flowFailed = flow.flow_run_status === 'failed';
   return {
     flow: key,
+    device,
     flow_run_status: flow.flow_run_status,
     flow_failed: flowFailed,
     required_steps: { total: required.length, ok: required.length - notOk.length, not_ok: notOk },
