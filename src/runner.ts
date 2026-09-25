@@ -42,7 +42,7 @@ import { loadFlows } from './flow-loader';
 import { launchBrowser, newContext } from './browser';
 import { loadDevicesConfig, resolveDevices, devicesForFlow, type DeviceProfile } from './devices';
 import { getAuthenticatedContext, authPreflight, Identity } from './login';
-import { isWriteFlow, messagingBlock, staticWriteGateProblems, DummyIdentityError } from './write-gates';
+import { isWriteFlow, messagingBlock, sendStepBlock, sendSteps, staticWriteGateProblems, DummyIdentityError } from './write-gates';
 import { NO_AUTH } from './profile';
 import { executeFlow } from './flow-executor';
 import { loadBaseline, saveBaseline } from './fingerprint';
@@ -196,7 +196,22 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   // for every selected write flow, or nothing runs at all.
   const flagged: RunSummary['flagged'] = [];
   const skippedForWrites: Flow[] = [];
-  const writeFlows = flows.filter(isWriteFlow);
+
+  // A step that CONFIRMS an outbound message is refused unless someone has
+  // attested the provider-level kill switch — in every mode, dummy included.
+  // Data isolation keeps records apart; it does not stop a message leaving.
+  for (const f of flows) {
+    for (const step of sendSteps(f)) {
+      const why = sendStepBlock(step, profile);
+      if (!why) continue;
+      log.warn(`FLAGGED ${f.module}/${f.flow} — ${why}`);
+      flagged.push({ module: f.module, flow: f.flow, reason: why });
+      skippedForWrites.push(f);
+      break;
+    }
+  }
+
+  const writeFlows = flows.filter((f) => isWriteFlow(f) && !skippedForWrites.includes(f));
   if (writeFlows.length && env.writeMode !== 'dummy') {
     for (const f of writeFlows) {
       log.skip(`${f.module}/${f.flow} — writes data and WRITE_MODE is not "dummy"`);

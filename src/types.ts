@@ -114,6 +114,13 @@ export interface FlowStep {
   /** If true, a failure here logs and continues instead of aborting the flow. */
   optional?: boolean;
   /**
+   * This step CONFIRMS an outbound message (the second press that actually
+   * sends an email, SMS, WhatsApp or push). It is refused unless the app
+   * profile carries an outboundKillSwitch attestation — in dummy mode too,
+   * because a separate tenant still sends to whatever address it holds.
+   */
+  sends?: boolean;
+  /**
    * Marks a step that writes data. Allowed only in a flow that declares
    * `writes: true` and `auth: dummy` (see write-gates.ts); anywhere else it is
    * a hard validation error. A recorder draft also uses it to flag a suspected

@@ -27,13 +27,24 @@
     "extraEnvVars       Other .env variables flows may use as {{NAME}} (e.g. a pinned record id). Never credentials.",
     "dummyAccount       The dummy tenant's fingerprint and write-safety switches. See the $comment inside it.",
     "interstitials      Selectors of nuisance overlays (cookie banner, nudge modal) dismissed before each tap.",
-    "discovery          Where `npm run discover` looks for navigation. See the $comment inside it."
+    "discovery          Where `npm run discover` looks for navigation. See the $comment inside it.",
+    "dataIsolation: how this app keeps test data away from real records —",
+    "  separate-project (own deployment AND database) | separate-tenant (a real tenant boundary) | none.",
+    "  \"none\" is the default and refuses every write. A login is NOT isolation: a single-tenant app",
+    "  cannot be \"separate-tenant\" however many accounts it has.",
+    "outboundKillSwitch: a dated human attestation that outbound messaging is OFF for this target,",
+    "  e.g. { \"email\": \"EMAIL_PROVIDER=dev\", \"verifiedOn\": \"2026-09-25\" }. Writes are refused without it,",
+    "  and so is any step declared `sends: true`. Synthetic @example.com addresses are data HYGIENE,",
+    "  not a safety control: the app will still try to deliver to them."
   ],
-
   "appName": "Sample App",
   "appDescription": "REPLACE ME — one line on what the app does and who uses it.",
   "baseUrl": "https://app.example.com",
-  "allowedHosts": ["app.example.com", "localhost", "127.0.0.1"],
+  "allowedHosts": [
+    "app.example.com",
+    "localhost",
+    "127.0.0.1"
+  ],
   "writeAllowedHosts": [],
   "repoPath": "",
   "repoBranch": "main",
@@ -42,7 +53,6 @@
   "locale": "en-US",
   "timezone": "UTC",
   "docsAudience": "a person using the app for the first time",
-
   "loginAdapter": {
     "$comment": [
       "type: email-password | username-password | mobile-pin. Selectors are the app's own, ideally data-testid.",
@@ -67,7 +77,6 @@
       "homePath": "/"
     }
   },
-
   "accounts": {
     "admin": {
       "description": "A real account with full navigation. Permanently READ-ONLY.",
@@ -83,7 +92,6 @@
   },
   "defaultAccount": "admin",
   "extraEnvVars": [],
-
   "dummyAccount": {
     "$comment": [
       "A flow writes only when ALL hold: WRITE_MODE=dummy, the flow declares `writes: true` and `auth: dummy`,",
@@ -99,15 +107,18 @@
     "fingerprint": {
       "tenantId": "",
       "tenantName": "",
-      "tenantIdProbe": { "selector": "[data-testid=\"tenant-switcher\"]", "attribute": "data-tenant-id" },
-      "tenantNameProbe": { "selector": "[data-testid=\"tenant-name\"]" }
+      "tenantIdProbe": {
+        "selector": "[data-testid=\"tenant-switcher\"]",
+        "attribute": "data-tenant-id"
+      },
+      "tenantNameProbe": {
+        "selector": "[data-testid=\"tenant-name\"]"
+      }
     },
     "messagingSuppressed": false,
     "syntheticPhones": []
   },
-
   "interstitials": [],
-
   "discovery": {
     "$comment": [
       "Each navSource: open `path`, read every control matching `items`, tap each (re-found by `role` +",
@@ -116,7 +127,14 @@
       "Omit this section to read the tabs and nav links on '/'."
     ],
     "navSources": [
-      { "path": "/", "items": "nav a[href]", "role": "link", "tab": true }
+      {
+        "path": "/",
+        "items": "nav a[href]",
+        "role": "link",
+        "tab": true
+      }
     ]
-  }
+  },
+  "dataIsolation": "none",
+  "outboundKillSwitch": null
 }

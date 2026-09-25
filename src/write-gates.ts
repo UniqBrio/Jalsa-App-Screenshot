@@ -11,6 +11,12 @@
  *   3. the host is in the profile's writeAllowedHosts
  *   4. after sign-in, the tenant id AND name the app shows equal the profile's
  *      dummy fingerprint exactly
+ *   5. the profile claims real data isolation (dataIsolation is not "none")
+ *   6. the profile carries an outboundKillSwitch attestation
+ *
+ * 5 exists because a login is not isolation: a single-tenant app cannot keep a
+ * "test academy" away from real records, however many accounts it has. 6 exists
+ * because separation of DATA does not stop a message leaving the building.
  *
  * 1 off → write flows are skipped with a reason (writes are simply off).
  * 1 on and any of 2-4 failing → the whole run aborts before the first action.
@@ -55,7 +61,7 @@ export interface WriteGateContext {
   writeMode: 'dummy' | 'off';
   host: string;
   writeAllowedHosts: string[];
-  profile: Pick<AppProfile, 'id' | 'dummyAccount'>;
+  profile: Pick<AppProfile, 'id' | 'dummyAccount' | 'dataIsolation' | 'outboundKillSwitch'>;
 }
 
 /**
@@ -71,12 +77,48 @@ export function staticWriteGateProblems(flow: Flow, ctx: WriteGateContext): stri
   if (!ctx.writeAllowedHosts.includes(ctx.host)) {
     p.push(`${where}: host "${ctx.host}" is not in writeAllowedHosts of apps/${ctx.profile.id}/app.config.json`);
   }
+  // 5. Isolation. A login is not isolation.
+  if (ctx.profile.dataIsolation === 'none' || !ctx.profile.dataIsolation) {
+    p.push(
+      `${where}: apps/${ctx.profile.id}/app.config.json declares dataIsolation "none" — ` +
+        `writes are refused. Set it to "separate-project" or "separate-tenant" only if the app ` +
+        `really keeps this data away from real records.`,
+    );
+  }
+  // 6. Someone has checked, and dated, that outbound messaging is off.
+  if (!ctx.profile.outboundKillSwitch) {
+    p.push(
+      `${where}: apps/${ctx.profile.id}/app.config.json has no outboundKillSwitch attestation ` +
+        `(e.g. { "email": "EMAIL_PROVIDER=dev", "verifiedOn": "<date>" }) — writes are refused`,
+    );
+  }
   const fp = ctx.profile.dummyAccount?.fingerprint;
   if (!fp) p.push(`${where}: apps/${ctx.profile.id}/app.config.json has no dummyAccount fingerprint`);
   else if (!fp.tenantId.trim() || !fp.tenantName.trim()) {
     p.push(`${where}: dummyAccount.fingerprint needs both tenantId and tenantName filled in`);
   }
   return p;
+}
+
+/**
+ * Why a step that confirms an outbound message must be blocked, or null.
+ *
+ * This applies to EVERY run, dummy mode included: a separate tenant still sends
+ * to whatever address the record holds, and a reserved-domain address is not a
+ * safety control — only the provider-level kill switch is.
+ */
+export function sendStepBlock(step: FlowStep, profile: Pick<AppProfile, 'id' | 'outboundKillSwitch'>): string | null {
+  if (step.sends !== true) return null;
+  if (profile.outboundKillSwitch) return null;
+  return (
+    `step "${step.id}" confirms an outbound message, and apps/${profile.id}/app.config.json carries ` +
+    `no outboundKillSwitch attestation — blocked so no real person can be messaged`
+  );
+}
+
+/** Steps in a flow that confirm a send. */
+export function sendSteps(flow: Flow): FlowStep[] {
+  return [...(flow.setup ?? []), ...(flow.steps ?? []), ...(flow.teardown ?? [])].filter((s) => s && s.sends === true);
 }
 
 /** Why a write flow must be skipped because it would message real people, or null. */

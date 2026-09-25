@@ -108,6 +108,8 @@ const ctx = (over: Partial<import('../write-gates').WriteGateContext> = {}) => (
   writeAllowedHosts: ['fixture.test'],
   profile: {
     id: 'sample-app',
+    dataIsolation: profile.dataIsolation,
+    outboundKillSwitch: profile.outboundKillSwitch,
     dummyAccount: { ...profile.dummyAccount!, fingerprint: { ...profile.dummyAccount!.fingerprint } },
   },
   ...over,
@@ -221,4 +223,65 @@ test('teardown acts only while the run tag is on screen', async () => {
   const td = run.steps.find((s) => s.id === '900-delete')!;
   assert.equal(td.status, 'skipped');
   assert.match(td.error ?? '', /teardown refused: the run tag .* is not on screen/);
+});
+
+
+// ─── isolation and kill-switch gates ─────────────────────────────────────────
+
+test('dataIsolation "none" refuses every write, however well the other gates hold', () => {
+  const problems = gates.staticWriteGateProblems(writeFlow(), ctx({
+    profile: { ...ctx().profile, dataIsolation: 'none' },
+  }));
+  assert.match(problems.join(), /dataIsolation "none"/);
+  // A login is not isolation: this is exactly the single-tenant case.
+  assert.equal(gates.staticWriteGateProblems(writeFlow(), ctx({
+    profile: { ...ctx().profile, dataIsolation: 'separate-tenant' },
+  })).length, 0);
+});
+
+test('a missing outboundKillSwitch attestation refuses every write', () => {
+  const problems = gates.staticWriteGateProblems(writeFlow(), ctx({
+    profile: { ...ctx().profile, outboundKillSwitch: null },
+  }));
+  assert.match(problems.join(), /no outboundKillSwitch attestation/);
+});
+
+test('both new gates are independent of the original four', () => {
+  // Everything else perfect, each new gate alone still blocks.
+  for (const over of [
+    { dataIsolation: 'none' as const, outboundKillSwitch: profile.outboundKillSwitch },
+    { dataIsolation: profile.dataIsolation, outboundKillSwitch: null },
+  ]) {
+    const problems = gates.staticWriteGateProblems(writeFlow(), ctx({ profile: { ...ctx().profile, ...over } }));
+    assert.equal(problems.length, 1, `expected exactly one problem, got: ${problems.join(' | ')}`);
+  }
+});
+
+test('a step that confirms a send is blocked without an attestation — dummy mode included', () => {
+  const sendStep = { id: '040-confirm-send', action: 'click' as const, selector: '[data-testid="send-confirm"]', sends: true };
+  const noAttestation = { id: 'sample-app', outboundKillSwitch: null };
+  const attested = { id: 'sample-app', outboundKillSwitch: profile.outboundKillSwitch };
+
+  assert.match(String(gates.sendStepBlock(sendStep, noAttestation)), /confirms an outbound message/);
+  assert.equal(gates.sendStepBlock(sendStep, attested), null);
+  // A step that does not confirm a send is never blocked by this gate.
+  assert.equal(gates.sendStepBlock({ id: '010-open', action: 'click' as const }, noAttestation), null);
+});
+
+test('sendSteps finds send confirmations in every phase of a flow', () => {
+  const flow = {
+    module: 'm', flow: 'f', steps: [{ id: '010', action: 'click' as const }, { id: '020', action: 'click' as const, sends: true }],
+    setup: [{ id: '005', action: 'goto' as const, sends: true }],
+    teardown: [{ id: '090', action: 'click' as const }],
+  } as unknown as import('../types').Flow;
+  assert.deepEqual(gates.sendSteps(flow).map((s) => s.id), ['005', '020']);
+});
+
+test('synthetic contact data is hygiene, not a safety control', () => {
+  // A reserved-domain address is still an address the app will try to send to;
+  // only the provider kill switch stops delivery. Both gates exist, separately.
+  const flow = writeFlow();
+  assert.deepEqual(gates.syntheticDataProblems('someone@example.com'), [], 'reserved domain passes hygiene');
+  const problems = gates.staticWriteGateProblems(flow, ctx({ profile: { ...ctx().profile, outboundKillSwitch: null } }));
+  assert.match(problems.join(), /outboundKillSwitch/, 'hygiene passing does not satisfy the kill-switch gate');
 });

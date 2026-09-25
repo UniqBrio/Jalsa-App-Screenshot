@@ -57,6 +57,36 @@ export interface TenantProbe {
   urlPattern?: string;
 }
 
+/**
+ * How this app's test data is kept away from real users and real records.
+ *
+ *   separate-project  its own deployment AND its own database
+ *   separate-tenant   a genuinely separate tenant inside a shared deployment
+ *   none              no isolation is claimed — writes are refused outright
+ *
+ * "none" is the default and the safe answer. Claiming isolation is an
+ * assertion about the app's architecture: a single-tenant app CANNOT be
+ * "separate-tenant", however many logins it has.
+ */
+export type DataIsolation = 'separate-project' | 'separate-tenant' | 'none';
+export const DATA_ISOLATIONS: DataIsolation[] = ['separate-project', 'separate-tenant', 'none'];
+
+/**
+ * A human's attestation that outbound messaging is switched OFF for the target
+ * this app writes to, naming the control that does it and the date it was
+ * checked. Writes and send-confirming steps are refused without it.
+ *
+ *   { "email": "EMAIL_PROVIDER=dev", "verifiedOn": "2026-09-25" }
+ *
+ * Keys other than verifiedOn are channels (email, sms, whatsapp, push).
+ */
+export interface OutboundKillSwitch {
+  /** channel -> the control that disables it. */
+  channels: Record<string, string>;
+  /** ISO date the attestation was checked. */
+  verifiedOn: string;
+}
+
 export interface DummyAccountConfig {
   /** Expected identity after sign-in. Both must match EXACTLY or the run aborts. */
   fingerprint: {
@@ -108,6 +138,10 @@ export interface AppProfile {
   /** Who the generated documentation is written for. */
   docsAudience: string;
   loginAdapter: LoginAdapterConfig;
+  /** How test data is isolated from real data. "none" refuses every write. */
+  dataIsolation: DataIsolation;
+  /** Attestation that outbound messaging is off for this target, or null. */
+  outboundKillSwitch: OutboundKillSwitch | null;
   accounts: Record<string, AccountConfig>;
   /** Identity a flow signs in as when it does not say. */
   defaultAccount: string;
@@ -305,6 +339,36 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
     };
   }
 
+  // Isolation: absent means "none". Writes are refused unless it is a real separation.
+  const dataIsolation: DataIsolation = o.dataIsolation ?? 'none';
+  if (!DATA_ISOLATIONS.includes(dataIsolation)) {
+    e.push(`dataIsolation: must be one of ${DATA_ISOLATIONS.join(' | ')} (absent means "none")`);
+  }
+
+  // Outbound kill switch attestation.
+  let outboundKillSwitch: OutboundKillSwitch | null = null;
+  if (o.outboundKillSwitch !== undefined && o.outboundKillSwitch !== null) {
+    const k = o.outboundKillSwitch;
+    if (typeof k !== 'object' || Array.isArray(k)) e.push('outboundKillSwitch: an object, e.g. { "email": "EMAIL_PROVIDER=dev", "verifiedOn": "2026-09-25" }');
+    else {
+      const { verifiedOn, ...channels } = k as Record<string, unknown>;
+      if (typeof verifiedOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(verifiedOn)) {
+        e.push('outboundKillSwitch.verifiedOn: the ISO date (YYYY-MM-DD) the attestation was checked');
+      }
+      const names = Object.keys(channels);
+      if (!names.length) e.push('outboundKillSwitch: name at least one channel, e.g. "email": "EMAIL_PROVIDER=dev"');
+      for (const n of names) {
+        if (typeof channels[n] !== 'string' || !String(channels[n]).trim()) {
+          e.push(`outboundKillSwitch.${n}: name the control that switches this channel off`);
+        }
+      }
+      outboundKillSwitch = {
+        channels: Object.fromEntries(names.map((n) => [n, String(channels[n])])),
+        verifiedOn: String(verifiedOn ?? ''),
+      };
+    }
+  }
+
   const interstitials = o.interstitials ?? [];
   if (!Array.isArray(interstitials) || !interstitials.every((s: unknown) => typeof s === 'string' && s)) {
     e.push('interstitials: an array of selector strings');
@@ -346,6 +410,8 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
     timezone: optStr('timezone', 'UTC'),
     docsAudience: optStr('docsAudience', 'a person using the app for the first time'),
     loginAdapter,
+    dataIsolation,
+    outboundKillSwitch,
     accounts,
     defaultAccount,
     extraEnvVars,

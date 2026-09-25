@@ -79,6 +79,8 @@ cp apps/my-app/.env.example apps/my-app/.env
 | `accounts` | Identity → `.env` names of its login and secret; `optional: true` skips its flows when unset |
 | `defaultAccount` | Identity for flows without `auth:` (never `dummy`) |
 | `dummyAccount` | Expected tenant id + name after the dummy signs in, and how to read them; `messagingSuppressed` |
+| `dataIsolation` | `separate-project` \| `separate-tenant` \| `none`. Default `none` — **refuses every write** |
+| `outboundKillSwitch` | Dated attestation that outbound messaging is off, e.g. `{ "email": "EMAIL_PROVIDER=dev", "verifiedOn": "2026-09-25" }` |
 
 ### 2.2 Shared settings — root `.env` (optional)
 
@@ -169,6 +171,8 @@ title: Create an order
 auth: dummy                    # the only identity that may write
 writes: true                   # required on any flow that writes
 sends_messages: [email]        # declare outbound messages; skipped unless the dummy tenant is muted
+# A step that CONFIRMS a send must declare `sends: true`; it is blocked unless
+# app.config.json carries an outboundKillSwitch attestation — dummy mode included.
 steps:
   - id: 010-new
     action: goto
@@ -308,14 +312,30 @@ Writes `apps/my-app/docs/<Device>/<module>.md` from the latest run.
 
 ### 4.3 Dummy-account writes
 
-1. The dummy account exists **in its own tenant** — never a user inside a real
-   one: its records must be invisible to real users.
-2. Fill in `dummyAccount.fingerprint` (the tenant id and name the app shows
+1. **Prove the isolation before claiming it.** Set `dataIsolation` to
+   `separate-project` (own deployment and database) or `separate-tenant` (a real
+   tenant boundary). It defaults to `none`, which **refuses every write**.
+   A login is not isolation: a single-tenant app cannot be `separate-tenant`,
+   however many accounts it has — check the schema for a tenant column before
+   you answer.
+2. **Attest the kill switch.** Fill in `outboundKillSwitch`, naming the control
+   that switches outbound messaging off for this target and the date you checked
+   it: `{ "email": "EMAIL_PROVIDER=dev", "verifiedOn": "2026-09-25" }`. Without
+   it, writes are refused and so is any step declared `sends: true`.
+3. Fill in `dummyAccount.fingerprint` (the tenant id and name the app shows
    after sign-in, and where to read them), the dummy credentials in `.env`, and
    the dummy tenant's host in `writeAllowedHosts`.
-3. Set `messagingSuppressed: true` only if the dummy tenant cannot send email,
+4. Set `messagingSuppressed: true` only if the dummy tenant cannot send email,
    SMS or WhatsApp.
-4. Run with `WRITE_MODE=dummy` in `apps/my-app/.env`.
+5. Run with `WRITE_MODE=dummy` in `apps/my-app/.env`.
+
+> **Synthetic contact data is hygiene, not a safety control.** `@example.com`
+> addresses and 555 phone numbers keep invented records obviously fake and keep
+> evidence clean — but the app will still *attempt* delivery to them, and most
+> apps have no reserved-domain filter. The only thing that stops a message
+> reaching a real person is the provider-level kill switch you attested in
+> step 2. A step that confirms a send must declare `sends: true`, and is blocked
+> without that attestation **in every mode, dummy included**.
 
 The runner signs in as the dummy **before any flow acts** and compares the
 tenant exactly. Any failed gate aborts the whole run; nothing is written.

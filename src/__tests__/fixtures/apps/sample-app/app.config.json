@@ -65,5 +65,10 @@
   },
   "extraEnvVars": [
     "FIXED_MEMBER_ID"
-  ]
+  ],
+  "dataIsolation": "separate-project",
+  "outboundKillSwitch": {
+    "email": "EMAIL_PROVIDER=dev",
+    "verifiedOn": "2026-09-25"
+  }
 }
