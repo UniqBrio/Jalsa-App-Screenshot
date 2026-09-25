@@ -38,12 +38,26 @@ export interface CheckFinding {
 
 export interface CheckOptions {
   runDir: string;
+  /** Fallback density, used only when a run predates device profiles. */
   expectedDpr: number;
+  /** Device id -> its deviceScaleFactor. A frame is checked against its own device. */
+  deviceDpr?: Record<string, number>;
   requireFlows?: string[];
   identifiers?: IdentifierValue[];
   secrets?: string[];
   /** `<Device>/<module>/<flow>` keys captured as the dummy account. Default: read from evidence-summary.json. */
   dummyFlows?: string[];
+}
+
+/** Device id -> its expected pixel density, from config/devices.json. */
+export function deviceDprMap(): Record<string, number> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { loadDevicesConfig } = require('../devices') as typeof import('../devices');
+    return Object.fromEntries(loadDevicesConfig().devices.map((d) => [d.id, d.dpr]));
+  } catch {
+    return {};
+  }
 }
 
 export interface CheckResult {
@@ -140,7 +154,11 @@ export function checkEvidenceRun(opts: CheckOptions): CheckResult {
         const size = pngSize(fs.readFileSync(png));
         if (size.width !== frame.image.width || size.height !== frame.image.height) add('frame-size', r, `${phase}.frame.image does not match the PNG`);
       } catch { add('frame-size', r, `${phase}.frame is not a readable PNG`); }
-      if (Math.abs(frame.dpr - opts.expectedDpr) > 0.01) add('frame-dpr', r, `${phase}.frame.dpr ${frame.dpr} ≠ expected ${opts.expectedDpr}`);
+      // Each device has its own density: a 1x laptop frame is not a faulty 2x phone frame.
+      const wantDpr = (ev.device ? opts.deviceDpr?.[ev.device] : undefined) ?? opts.expectedDpr;
+      if (Math.abs(frame.dpr - wantDpr) > 0.01) {
+        add('frame-dpr', r, `${phase}.frame.dpr ${frame.dpr} ≠ expected ${wantDpr}${ev.device ? ` for device ${ev.device}` : ''}`);
+      }
       if (!frame.stable) add('frame-unstable', r, `${phase}.frame was captured before the page settled (${frame.stability_reason})`, 'warn');
     }
 
@@ -203,6 +221,7 @@ if (require.main === module) {
     const result = checkEvidenceRun({
       runDir,
       expectedDpr: env.browser.deviceScaleFactor,
+      deviceDpr: deviceDprMap(),
       requireFlows: (val('--require') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     });
     writeJson(path.join(runDir, 'evidence-check.json'), result);
