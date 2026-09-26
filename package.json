@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "Deterministic Playwright capture of every screen and state of any web app, per app profile (apps/<app-id>/) and device type, with git-diff + DOM-fingerprint change detection, nav discovery and doc generation. Real accounts are read-only; only a verified dummy account in its own test tenant may write.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UniqBrio/Any-App-Screenshot.git"
+  },
   "license": "UNLICENSED",
   "type": "commonjs",
   "engines": {

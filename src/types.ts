@@ -114,6 +114,13 @@ export interface FlowStep {
   /** If true, a failure here logs and continues instead of aborting the flow. */
   optional?: boolean;
   /**
+   * Why this step is allowed to be missing — e.g. a control the app only shows
+   * for data this account does not have. When an optional step is skipped, the
+   * run report prints this instead of leaving a bare failure-looking line, so a
+   * known limitation does not read as a regression.
+   */
+  optional_reason?: string;
+  /**
    * This step CONFIRMS an outbound message (the second press that actually
    * sends an email, SMS, WhatsApp or push). It is refused unless the app
    * profile carries an outboundKillSwitch attestation — in dummy mode too,
@@ -252,6 +259,8 @@ export interface StepResult {
   fingerprint: 'new' | 'unchanged' | 'changed' | null;
   /** True when the stability gate expired — the shot was taken mid-load and named .loading.png. */
   unstable?: boolean;
+  /** Set when an optional step was skipped and the manifest says why. */
+  skip_reason?: string | null;
   duration_ms: number;
   error?: string;
 }
@@ -302,6 +311,12 @@ export interface RunSummary {
   flows: Array<Pick<FlowRun, 'module' | 'flow' | 'device' | 'status' | 'reason' | 'duration_ms'>>;
   /** Flows that were skipped for a safety reason a human must look at. */
   flagged: Array<{ module: string; flow: string; reason: string }>;
+  /**
+   * Optional steps that did not run, with the manifest's stated reason. These
+   * are known limitations, not failures — the report lists them separately so
+   * nobody reads them as regressions.
+   */
+  expected_skips: Array<{ device: string; module: string; flow: string; step: string; reason: string }>;
 }
 
 export interface RoutesMapEntry {

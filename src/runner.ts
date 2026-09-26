@@ -430,6 +430,13 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     },
     flows: results.map((r) => ({ module: r.module, flow: r.flow, device: r.device, status: r.status, reason: r.reason, duration_ms: r.duration_ms })),
     flagged,
+    // Optional steps that did not run, with the manifest's reason: known
+    // limitations, listed apart from failures so they do not read as one.
+    expected_skips: results.flatMap((r) =>
+      r.steps
+        .filter((st) => st.status === 'skipped' && st.skip_reason)
+        .map((st) => ({ device: r.device, module: r.module, flow: r.flow, step: st.id, reason: st.skip_reason as string })),
+    ),
   };
 
   const summaryPath = sink ? path.join(sink.root, 'run-summary.json') : path.join(runDir, 'run-summary.json');
@@ -447,6 +454,10 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   log.info(`  changed:     ${summary.totals.flows_changed}`);
   log.info(`  screenshots: ${summary.totals.screenshots}`);
   if (flagged.length) log.warn(`  flagged:     ${flagged.length} flow(s) skipped for safety — see "flagged" in the summary`);
+  if (summary.expected_skips.length) {
+    log.info(`  expected:    ${summary.expected_skips.length} optional step(s) skipped for a stated reason (not failures):`);
+    for (const k of summary.expected_skips) log.info(`                 ${k.device} · ${k.module}/${k.flow} ${k.step} — ${k.reason}`);
+  }
   log.info(`  summary:     ${relPosix(paths.root, summaryPath)}`);
 
   if (summary.totals.flows_changed > 0 && !args.evidence) {

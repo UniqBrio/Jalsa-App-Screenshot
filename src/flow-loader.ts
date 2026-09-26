@@ -386,6 +386,14 @@ export function validateFlow(flow: Flow, rel: string, routesMap: RoutesMap): str
   }
 
   const steps = allSteps(flow).filter((s) => s && typeof s === 'object');
+  for (const s of steps) {
+    if (s.optional_reason === undefined) continue;
+    if (typeof s.optional_reason !== 'string' || !s.optional_reason.trim()) {
+      e.push(at(`step "${s.id}": optional_reason must be a non-empty string.`));
+    } else if (s.optional !== true) {
+      e.push(at(`step "${s.id}": optional_reason only means something with optional: true.`));
+    }
+  }
 
   // READ-ONLY unless dummy. A real login is permanently read-only: a flow that
   // declares a write is refused before a browser ever opens, unless it is an

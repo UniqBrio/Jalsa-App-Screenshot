@@ -464,3 +464,23 @@ test('isDraftFile matches only the .generated suffix', () => {
   assert.equal(isDraftFile('flows/students.add-student.yaml'), false);
   assert.equal(isDraftFile('flows/generated.yaml'), false);
 });
+
+// ─── optional_reason ─────────────────────────────────────────────────────────
+
+test('optional_reason states why a missing step is expected, and needs optional: true', () => {
+  const step = (over: Partial<FlowStep>): FlowStep =>
+    ({ id: '010-x', action: 'click', selector: '[data-testid="x"]', ...over } as FlowStep);
+
+  // Accepted alongside optional: true.
+  assert.deepEqual(errorsFor(v2([step({ optional: true, optional_reason: 'expected: single-branch academy' })])), []);
+  // A reason without optional: true says nothing — the step would still fail the flow.
+  assert.match(
+    errorsFor(v2([step({ optional_reason: 'expected: something' })])).join(),
+    /only means something with optional: true/,
+  );
+  // An empty reason is not a reason.
+  assert.match(
+    errorsFor(v2([step({ optional: true, optional_reason: '  ' })])).join(),
+    /must be a non-empty string/,
+  );
+});

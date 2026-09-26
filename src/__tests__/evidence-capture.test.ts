@@ -99,6 +99,7 @@ function summaryFor(runs: Array<{ module: string; flow: string; status: string }
     totals: { flows_total: runs.length, flows_run: runs.length, flows_skipped: 0, flows_failed: 0, flows_changed: 0, screenshots: 0 },
     flows: runs.map((r) => ({ ...r, device: DEVICE.id, status: r.status as RunSummary['flows'][0]['status'], reason: 'test', duration_ms: 0 })),
     flagged: [],
+    expected_skips: [],
   };
 }
 

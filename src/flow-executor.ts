@@ -324,7 +324,12 @@ async function runPhase(
 
       const optional = step.optional || phase === 'teardown';
       if (optional) {
-        log.warn(`${described} (${phase === 'teardown' ? 'teardown' : 'optional'}, continuing)`);
+        // A stated reason turns "something failed" into "this is known".
+        result.skip_reason = step.optional_reason ?? null;
+        const why = step.optional_reason
+          ? `optional — expected: ${step.optional_reason}`
+          : phase === 'teardown' ? 'teardown' : 'optional';
+        log.warn(`${described} (${why}, continuing)`);
         result.status = 'skipped';
         run.errors.push(`[${phase === 'teardown' ? 'teardown' : 'optional'}] ${described}`);
       }
