@@ -94,11 +94,11 @@ function buildEnv(p: AppProfile, appEnv: Record<string, string>) {
   const mob = mobileOptions(p);
   const accounts: Record<string, AccountCreds> = {};
   for (const [identity, a] of Object.entries(p.accounts)) {
-    const rawUser = (appEnv[a.userEnv] ?? '').trim();
+    const rawUser = a.userEnv ? (appEnv[a.userEnv] ?? '').trim() : '';
     const rawSecret = appEnv[a.secretEnv] ?? '';
     accounts[identity] = {
       user: isMobile ? normaliseMobile(rawUser, mob.countryCode, mob.mobileDigits) : rawUser,
-      secret: isMobile ? rawSecret.replace(/\D/g, '') : rawSecret,
+      secret: isMobile || p.loginAdapter.type === 'pin-only' ? rawSecret.replace(/\D/g, '') : rawSecret,
       userEnv: a.userEnv,
       secretEnv: a.secretEnv,
       optional: a.optional,
@@ -209,7 +209,7 @@ export function currentApp(): AppContext {
   // shell or the root .env is ignored there, and said so, so nobody believes
   // the other value is in use.
   for (const a of Object.values(profile.accounts)) {
-    for (const name of [a.userEnv, a.secretEnv]) {
+    for (const name of [a.userEnv, a.secretEnv].filter(Boolean)) {
       if (process.env[name]) warnings.push(`${name} is set outside apps/${id}/.env — ignored; credentials are read from apps/${id}/.env only.`);
     }
   }
@@ -250,7 +250,7 @@ export function storageStatePath(identity: string): string {
 export function envInterpolationVars(): Record<string, string> {
   const vars: Record<string, string> = { APP_URL: env.appUrl };
   for (const a of Object.values(env.accounts)) {
-    vars[a.userEnv] = a.user;
+    if (a.userEnv) vars[a.userEnv] = a.user;
     vars[a.secretEnv] = a.secret;
   }
   return { ...env.extraVars, ...vars };

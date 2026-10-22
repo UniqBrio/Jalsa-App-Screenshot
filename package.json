@@ -14,6 +14,8 @@
   },
   "scripts": {
     "validate": "ts-node src/validate.ts",
+    "coverage": "ts-node src/coverage.ts",
+    "audit:coverage": "ts-node src/audit-coverage.ts",
     "capture": "ts-node src/runner.ts",
     "capture:all": "ts-node src/runner.ts --force",
     "capture:module": "ts-node src/runner.ts --module",
@@ -27,7 +29,7 @@
     "prune": "ts-node src/prune-runs.ts",
     "baseline:accept": "ts-node src/accept-baseline.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node -r ts-node/register -r ./src/__tests__/setup.ts --test src/__tests__/glob.test.ts src/__tests__/fingerprint.test.ts src/__tests__/flow-loader.test.ts src/__tests__/flow-schema.test.ts src/__tests__/record-convert.test.ts src/__tests__/security-policy.test.ts src/__tests__/app-profile.test.ts src/__tests__/write-gates.test.ts src/__tests__/write-gates-e2e.test.ts src/__tests__/evidence-unit.test.ts src/__tests__/evidence-capture.test.ts src/__tests__/evidence-index.test.ts",
+    "test": "node -r ts-node/register -r ./src/__tests__/setup.ts --test src/__tests__/glob.test.ts src/__tests__/fingerprint.test.ts src/__tests__/flow-loader.test.ts src/__tests__/flow-schema.test.ts src/__tests__/record-convert.test.ts src/__tests__/security-policy.test.ts src/__tests__/app-profile.test.ts src/__tests__/write-gates.test.ts src/__tests__/write-gates-e2e.test.ts src/__tests__/evidence-unit.test.ts src/__tests__/evidence-capture.test.ts src/__tests__/evidence-index.test.ts src/__tests__/coverage-unit.test.ts src/__tests__/coverage-audit.test.ts src/__tests__/coverage-browser.test.ts",
     "postinstall": "playwright install chromium",
     "record": "ts-node src/recorder.ts",
     "record:convert": "ts-node src/record-convert.ts",

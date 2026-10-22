@@ -1,0 +1,12 @@
+{
+  "last_checked": "",
+  "routes": [
+    { "path": "/", "label": "Home", "module": "home" },
+    { "path": "/menu", "label": "Menu", "module": "shop" },
+    { "path": "/orders/[orderId]", "label": "Order", "module": "orders" },
+    { "path": "/docs/[...slug]", "label": "Docs", "module": "docs" },
+    { "path": "/help/[[...topic]]", "label": "Help", "module": "docs" },
+    { "path": "/hidden", "label": "Hidden", "module": "home" },
+    { "path": "/?tab=promo", "label": "Promo tab", "module": "home", "kind": "virtual" }
+  ]
+}

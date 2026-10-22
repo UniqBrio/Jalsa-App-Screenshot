@@ -1,0 +1,7 @@
+{
+  "app": "fx-next",
+  "exceptions": [
+    { "testid": "menu-delete", "reason": "Deletes a dish; real accounts are read-only and may never press it.", "module": "shop" },
+    { "route": "/help/[[...topic]]", "reason": "Static help text, rendered from markdown; nothing to operate." }
+  ]
+}

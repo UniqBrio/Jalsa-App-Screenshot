@@ -1,0 +1,131 @@
+# Coverage audit — does every interactive element and page of every registered
+# app have a screenshot flow (or an approved exception)?
+#
+# Static and offline: no browser, no app credentials, no deployment. Each app's
+# source repo is checked out read-only into app-src/ and audited with
+# `npm run audit:coverage -- --app <id>`. The app list comes from apps/*/app.config.json
+# (.github/scripts/coverage-matrix.mjs), so onboarding an app needs no edit here.
+#
+# Never commits, never accepts a baseline, never writes an exception, never
+# touches an app repository. Reports are uploaded as an artifact and the summary
+# is written to the job summary.
+#
+# Access: public app repos need nothing. A PRIVATE app repo needs the repository
+# secret APP_SOURCE_READ_TOKEN — a fine-grained token with read-only "Contents"
+# on those repos. Without it that app's audit is BLOCKED and says so (a warning
+# annotation and a summary row), instead of failing every run red.
+name: Coverage audit
+
+on:
+  pull_request:
+    paths: [apps/**, src/**, config/**, flows/**, package.json, package-lock.json, tsconfig.json, .github/**]
+  push:
+    branches: [main]
+    paths: [apps/**, src/**, config/**, flows/**, package.json, package-lock.json, tsconfig.json, .github/**]
+  schedule:
+    # Nightly, 02:47 IST: catches changes merged into the APP repos, which do not trigger this workflow.
+    - cron: '17 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coverage-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      include: ${{ steps.list.outputs.include }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          json=$(node .github/scripts/coverage-matrix.mjs apps)
+          echo "include=$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(process.argv[1]).include))' "$json")" >> "$GITHUB_OUTPUT"
+          for id in $(node -e 'process.stdout.write(JSON.parse(process.argv[1]).unconfigured.join(" "))' "$json"); do
+            echo "::warning::apps/$id has no valid source block (or an invalid id) — coverage is not audited for it"
+          done
+
+  audit:
+    needs: matrix
+    if: needs.matrix.outputs.include != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.include) }}
+    name: audit (${{ matrix.app }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Static checks need no browser: skip Playwright's Chromium download.
+      - run: npm ci --ignore-scripts
+
+      - name: Check out ${{ matrix.repository }} (read-only)
+        id: source
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          path: app-src
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+          token: ${{ secrets.APP_SOURCE_READ_TOKEN || github.token }}
+
+      - name: Audit ${{ matrix.app }}
+        if: steps.source.outcome == 'success'
+        env:
+          APP_ID: ${{ matrix.app }}
+          REPO_ENV: ${{ matrix.env }}
+        run: |
+          export "$REPO_ENV=$GITHUB_WORKSPACE/app-src"
+          npm run --silent audit:coverage -- --app "$APP_ID"
+
+      - name: Report a source this job could not read
+        if: steps.source.outcome != 'success'
+        env:
+          APP_ID: ${{ matrix.app }}
+          REPO: ${{ matrix.repository }}
+        run: |
+          echo "::warning::$APP_ID: BLOCKED — could not check out $REPO. A private repo needs the APP_SOURCE_READ_TOKEN secret (read-only Contents)."
+          printf '## Coverage audit\n\n| app | verdict |\n|---|---|\n| `%s` | ⛔ BLOCKED — no read access to `%s` (see the APP_SOURCE_READ_TOKEN note in the workflow) |\n' \
+            "$APP_ID" "$REPO" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.app }}
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  engine:
+    # The engine's own tests: typecheck + npm test (offline; Chromium for the
+    # browser tests). Not on the nightly schedule — the engine only changes in PRs.
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test

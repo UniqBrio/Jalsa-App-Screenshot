@@ -164,8 +164,9 @@ function textFilesUnder(dir: string): string[] {
   return out;
 }
 
-test('committed docs, flows and the template profile contain no mobile-shaped number', () => {
-  for (const file of ['docs', 'flows', 'apps/_template'].flatMap(textFilesUnder)) {
+test('committed docs, flows and app profiles contain no mobile-shaped number', () => {
+  // apps/ is committed (profiles, flows, inventories), so every profile is held to this too.
+  for (const file of ['docs', 'flows', 'apps'].flatMap(textFilesUnder)) {
     const m = fs.readFileSync(file, 'utf8').match(MOBILE_SHAPE);
     // Report the file, never the match — the match may be real personal data.
     assert.equal(m, null, `mobile-shaped number in ${path.relative(ROOT, file)}`);
@@ -196,6 +197,8 @@ test('no tracked file outside docs/ names a local app profile or its hosts', () 
   }
   for (const rel of tracked) {
     if (rel.startsWith('docs/') || /\.(png|zip|jpe?g)$/i.test(rel)) continue;
+    // An app's own committed profile folder is exactly where its details belong.
+    if (/^apps\/(?!_template\/)[^/]+\//.test(rel)) continue;
     const abs = path.join(ROOT, rel);
     if (!fs.existsSync(abs)) continue;
     const text = fs.readFileSync(abs, 'utf8').toLowerCase();

@@ -32,6 +32,12 @@
     "  separate-project (own deployment AND database) | separate-tenant (a real tenant boundary) | none.",
     "  \"none\" is the default and refuses every write. A login is NOT isolation: a single-tenant app",
     "  cannot be \"separate-tenant\" however many accounts it has.",
+    "source             Optional. Where the app's code is and how to read it, for `npm run coverage` and",
+    "                   `audit:coverage`: repository (owner/name), include/exclude (globs relative to the app",
+    "                   REPO root, like routes.map.json), testIdAttributes, extra interactive elements/handlerProps,",
+    "                   routes { strategy: nextjs-app | expo-router | none, appDir, nextConfig? }. The local clone",
+    "                   is --source, APP_REPO_PATH_<APP_ID> (shell/CI), APP_REPO_PATH in .env, or repoPath.",
+    "                   Without the block, capture works and coverage reports BLOCKED. See docs/COVERAGE.md.",
     "outboundKillSwitch: a dated human attestation that outbound messaging is OFF for this target,",
     "  e.g. { \"email\": \"EMAIL_PROVIDER=dev\", \"verifiedOn\": \"2026-09-25\" }. Writes are refused without it,",
     "  and so is any step declared `sends: true`. Synthetic @example.com addresses are data HYGIENE,",
@@ -119,6 +125,13 @@
     "syntheticPhones": []
   },
   "interstitials": [],
+  "source": {
+    "$comment": "Replace repository and the globs with the app's own. Remove the block to opt out of coverage.",
+    "repository": "your-org/your-app",
+    "include": ["src/**/*.tsx", "src/**/*.ts"],
+    "testIdAttributes": ["data-testid", "testID"],
+    "routes": { "strategy": "nextjs-app", "appDir": "src/app" }
+  },
   "discovery": {
     "$comment": [
       "Each navSource: open `path`, read every control matching `items`, tap each (re-found by `role` +",

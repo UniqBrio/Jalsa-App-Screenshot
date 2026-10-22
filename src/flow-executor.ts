@@ -22,6 +22,9 @@ import { domHash, fingerprintKey, compareFingerprint, updateFingerprint } from '
 import { readVisualState, diffVisualState, unknownVisualState, VisualState } from './visual-state';
 import { allSteps } from './flow-loader';
 import { isWriteStep } from './write-gates';
+import { exercises } from './coverage/actions';
+import { normaliseTestid } from './manual/census-probe';
+import { routePattern } from './manual/evidence-sanitize';
 import type { EvidenceSink, PreState } from './manual/evidence-capture';
 import type {
   Flow,
@@ -238,8 +241,10 @@ async function runPhase(
         before = await readVisualState(page).catch(() => unknownVisualState());
       }
 
+      if (selector && exercises(step.action)) result.target_testid = await probeTestId(page, selector);
       result.result = redactSecrets(await performAction(page, flow, step, selector, vars));
       await settle(page, settleMs);
+      result.url_after = urlPath(page.url());
       await runAssertions(page, flow, step, selector, vars);
 
       let shouldCapture = spec.mode !== 'none';
@@ -358,6 +363,31 @@ function resolveStatus(anyChanged: boolean, anyNew: boolean): FlowStatus {
   if (anyChanged) return 'changed';
   if (anyNew) return 'new';
   return 'unchanged';
+}
+
+/**
+ * The test id of the element a selector resolves to, read just before the
+ * action (which may navigate it away). Short timeout, never fatal: the action
+ * itself waits for the element properly, and a missing probe only means the
+ * coverage report falls back to the selector.
+ *
+ * A row id carries a record id (`member-row-<uuid>`), and a record id is
+ * personal data in a manifest: it is reduced to its family (`member-row-*`),
+ * exactly as evidence mode does, which is all coverage needs.
+ */
+const PROBE_TIMEOUT_MS = 3_000;
+async function probeTestId(page: Page, selector: string): Promise<string | null> {
+  const id = await page.locator(selector).first().getAttribute('data-testid', { timeout: PROBE_TIMEOUT_MS }).catch(() => null);
+  return id ? redactSecrets(normaliseTestid(id).family) : null;
+}
+
+/** The path the page is on, with record ids reduced to [id] — /course/[id], never /course/<uuid>. */
+function urlPath(url: string): string | null {
+  try {
+    return redactSecrets(routePattern(new URL(url).pathname, []));
+  } catch {
+    return null;
+  }
 }
 
 /** Actions that tap/type into the page and can be blocked by an interstitial. */

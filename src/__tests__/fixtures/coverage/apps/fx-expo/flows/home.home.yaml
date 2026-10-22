@@ -1,0 +1,14 @@
+schema_version: 2
+module: home
+flow: home
+title: Home
+steps:
+  - id: 010-home
+    action: goto
+    value: /
+  - id: 020-open
+    action: tap
+    selector: '[data-testid="home-open"]'
+  - id: 030-settings
+    action: click
+    selector: 'role=tab[name="Settings"]'

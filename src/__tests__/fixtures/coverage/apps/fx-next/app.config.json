@@ -1,0 +1,21 @@
+{
+  "$comment": "Synthetic coverage fixture: a Next.js App Router app whose source is fixtures/coverage/next-src (app in web/). Every value is invented.",
+  "appName": "Fixture Shop",
+  "appDescription": "A synthetic menu-and-orders app used only by the coverage tests.",
+  "baseUrl": "https://fixture.test",
+  "allowedHosts": ["fixture.test"],
+  "framework": "nextjs",
+  "loginAdapter": {
+    "type": "email-password",
+    "selectors": { "email": "[data-testid=\"login-email\"]", "password": "[data-testid=\"login-password\"]", "submit": "[data-testid=\"login-submit\"]", "signedIn": "[data-testid=\"home\"]" },
+    "options": { "loginPath": "/login", "homePath": "/" }
+  },
+  "accounts": { "admin": { "userEnv": "ADMIN_EMAIL", "secretEnv": "ADMIN_PASSWORD" } },
+  "defaultAccount": "admin",
+  "source": {
+    "repository": "fixture-org/fixture-shop",
+    "include": ["web/src/**/*.tsx", "web/src/**/*.ts"],
+    "testIdAttributes": ["data-testid", "testId"],
+    "routes": { "strategy": "nextjs-app", "appDir": "web/src/app", "nextConfig": "web/next.config.ts" }
+  }
+}

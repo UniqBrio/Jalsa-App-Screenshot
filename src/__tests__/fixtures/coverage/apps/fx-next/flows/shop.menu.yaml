@@ -1,0 +1,24 @@
+schema_version: 2
+module: shop
+flow: menu
+title: Menu
+# menu-delete is named in this description and in depends_on_routes-adjacent text; neither is coverage.
+description: The menu — add, a dish, the special row. Never presses menu-delete.
+depends_on_routes:
+  - /menu
+steps:
+  - id: 010-menu
+    action: goto
+    value: /menu
+  - id: 020-add
+    action: click
+    selector: '[data-testid="menu-add"]'
+  - id: 030-delete-visible
+    action: waitFor
+    selector: '[data-testid="menu-delete"]'
+  - id: 040-dish
+    action: click
+    selector: '[data-testid^="menu-item-"]'
+  - id: 050-special
+    action: click
+    selector: '[data-testid="menu-row-special"]'

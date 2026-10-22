@@ -1,0 +1,20 @@
+{
+  "$comment": "Synthetic coverage fixture: an Expo Router app whose source is fixtures/coverage/expo-src. Every value is invented.",
+  "appName": "Fixture Club",
+  "appDescription": "A synthetic course app used only by the coverage tests.",
+  "baseUrl": "https://fixture.test",
+  "allowedHosts": ["fixture.test"],
+  "framework": "react-native-web",
+  "loginAdapter": {
+    "type": "pin-only",
+    "selectors": { "pin": "[data-testid=\"pin-input\"]", "signedIn": "[data-testid=\"home-title\"]" },
+    "options": { "loginPath": "/" }
+  },
+  "accounts": { "owner": { "secretEnv": "OWNER_PIN" } },
+  "defaultAccount": "owner",
+  "source": {
+    "repository": "fixture-org/fixture-club",
+    "include": ["app/**/*.tsx", "app/**/*.ts", "src/**/*.tsx"],
+    "routes": { "strategy": "expo-router", "appDir": "app" }
+  }
+}

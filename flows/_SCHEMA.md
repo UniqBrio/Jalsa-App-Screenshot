@@ -383,6 +383,27 @@ never quietly become permanent. The right fix is a test id in the app repo;
 
 ---
 
+## What a step proves (coverage)
+
+`npm run coverage` counts an interactive element as covered only when a step
+**exercises** it: `click`, `tap`, `type`, `fill`, `select`, `check`, `uncheck`,
+`press` or `swipe`, on the last term of the step's `selector`. Every other
+mention **locates** it without covering it: `waitFor`, `expect`, `hover`,
+`scrollTo`, `scrollUntilVisible`, `wait`, `snapshot`, any `assert.*`, `mask`,
+`screenshot: element:…`, and the ancestor terms of a descendant chain
+(`[data-testid="sheet"] [data-testid="sheet-save"]` exercises `sheet-save`
+and only locates `sheet`). An id written in `description`, a comment or
+`depends_on_routes` is not a usage. Drafts and `disabled: true` flows never count.
+
+A page is visited by a `goto`, or by an `assert.url_contains` that names a path
+(`/orders/` + id). `depends_on_routes` is reported as *declared*, never as a visit.
+
+Prefer an exact `[data-testid="…"]` on the step that does the thing. A `^=`
+prefix covers the one dynamic family it names (`[data-testid^="course-card-"]`
+covers `course-card-*`); a prefix that matches several separate ids covers none
+of them. `role=` selectors are resolved by run evidence (`--evidence`), which
+records the test id each step actually pressed. Reference: `docs/COVERAGE.md`.
+
 ## Recording flows instead of writing them
 
 Authoring hundreds of steps by hand is the bottleneck, so a scenario can be

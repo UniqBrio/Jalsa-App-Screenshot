@@ -6,6 +6,8 @@
  *
  *   mobile-pin         mobile number → Continue → a numeric PIN that submits
  *                      itself on the last digit (no password, no OTP)
+ *   pin-only           a PIN and nothing else — the PIN identifies the person
+ *                      (a staff keypad); submits itself on the last digit
  *   email-password     email + password (+ optional "Next" between them)
  *   username-password  username + password (+ optional "Next" between them)
  *
@@ -24,8 +26,11 @@ export interface LoginAdapter {
   configErrors(): string[];
   /** Why this identity's credentials cannot be used, or null. Never quotes a value. */
   preflight(identity: string, creds: AccountCreds): string | null;
-  /** Loads the app and reports whether the session is signed in. */
-  isAuthenticated(page: Page): Promise<boolean>;
+  /**
+   * Loads the app and reports whether the session is signed in. `identity`
+   * matters to adapters whose accounts sign in at different paths.
+   */
+  isAuthenticated(page: Page, identity?: string): Promise<boolean>;
   authenticate(page: Page, identity: string, creds: AccountCreds): Promise<void>;
 }
 
@@ -63,7 +68,9 @@ const DEFAULT_STATUS = 'try again|could not|not been registered|disabled|locked|
  * One screen: the mobile number first, Continue checks it is a registered
  * account, then the PIN step appears and submits itself on the last digit.
  *
- * selectors: phone, continue, pin, signedIn (required); mustChangePin (optional)
+ * selectors: phone, continue, pin, signedIn (required); mustChangePin, submit (optional)
+ *            `submit` is pressed after the last digit, for an OTP/PIN form that does
+ *            not submit itself (a "Verify" button).
  * options:   countryCode, mobileDigits (10), pinDigits (4), loginPath ('/'),
  *            registerUrlPattern (a route a new number is sent to — never filled in),
  *            statusPattern (regex for the status sentence)
@@ -80,7 +87,7 @@ function mobilePin(profile: AppProfile): LoginAdapter {
   return {
     type: 'mobile-pin',
     configErrors: () => [
-      ...checkKeys('selectors', SEL, ['phone', 'continue', 'pin', 'signedIn'], ['mustChangePin']),
+      ...checkKeys('selectors', SEL, ['phone', 'continue', 'pin', 'signedIn'], ['mustChangePin', 'submit']),
       ...checkKeys('options', opt, [], ['countryCode', 'mobileDigits', 'pinDigits', 'loginPath', 'registerUrlPattern', 'statusPattern']),
     ],
 
@@ -151,6 +158,7 @@ function mobilePin(profile: AppProfile): LoginAdapter {
       // A PIN field that submits itself on the last digit: no button to press.
       await pin.fill('');
       await pin.pressSequentially(creds.secret);
+      if (SEL.submit) await page.locator(SEL.submit).first().click();
 
       const landedSel = [SEL.signedIn, SEL.mustChangePin].filter(Boolean).join(', ');
       await page.locator(landedSel).first().waitFor({ state: 'visible', timeout: 25_000 }).catch(() => undefined);
@@ -167,6 +175,97 @@ function mobilePin(profile: AppProfile): LoginAdapter {
         throw new Error(
           `${identity} sign-in did not complete — still on ${page.url()}${why ? ` ("${why}")` : ''}. ` +
             `Check ${creds.userEnv} / ${creds.secretEnv} in apps/${profile.id}/.env.`,
+        );
+      }
+      log.ok(`${identity} sign-in complete (${page.url()})`);
+    },
+  };
+}
+
+// ─── pin-only ────────────────────────────────────────────────────────────────
+
+/**
+ * A PIN keypad with no username: the PIN alone says who is signing in, and the
+ * last digit submits it. Apps with one sign-in screen per surface (an owner
+ * console at /owner, a staff handset at /staff) give each account its own
+ * `loginPath` in `accounts`.
+ *
+ * selectors: pin, signedIn (required); key, error, mustChangePin (optional)
+ *            `key` is a keypad button template with {digit} — e.g.
+ *            [data-testid="staff-key-{digit}"] — pressed digit by digit instead of
+ *            typing into `pin`, for keypads whose input element is hidden.
+ * options:   loginPath ('/'), pinDigits (4), statusPattern
+ */
+function pinOnly(profile: AppProfile): LoginAdapter {
+  const SEL = profile.loginAdapter.selectors;
+  const opt = profile.loginAdapter.options as Record<string, unknown>;
+  const { pinDigits } = mobileOptions(profile);
+  const defaultPath = typeof opt.loginPath === 'string' ? opt.loginPath : '/';
+  const status = new RegExp(typeof opt.statusPattern === 'string' ? opt.statusPattern : DEFAULT_STATUS, 'i');
+  const pathFor = (identity?: string) => (identity && profile.accounts[identity]?.loginPath) || defaultPath;
+  const landed = [SEL.signedIn, SEL.mustChangePin].filter(Boolean).join(', ');
+
+  return {
+    type: 'pin-only',
+    configErrors: () => {
+      const e = [
+        ...checkKeys('selectors', SEL, ['pin', 'signedIn'], ['key', 'error', 'mustChangePin']),
+        ...checkKeys('options', opt, [], ['loginPath', 'pinDigits', 'statusPattern']),
+      ];
+      if (SEL.key && !SEL.key.includes('{digit}')) e.push('loginAdapter.selectors.key: must contain {digit}, e.g. [data-testid="key-{digit}"]');
+      for (const [name, a] of Object.entries(profile.accounts)) {
+        if (a.userEnv) e.push(`accounts.${name}.userEnv: a pin-only sign-in has no login — remove it, the PIN is the identity`);
+      }
+      return e;
+    },
+
+    preflight(identity, creds) {
+      if (creds.secret.length !== pinDigits) {
+        return `${creds.secretEnv} is not set in apps/${profile.id}/.env (or is not ${pinDigits} digits) — "${identity}" cannot sign in`;
+      }
+      return null;
+    },
+
+    async isAuthenticated(page, identity) {
+      await page.goto(pathFor(identity), { waitUntil: 'domcontentloaded' }).catch(() => undefined);
+      await page.locator(`${SEL.signedIn}, ${SEL.pin}`).first().waitFor({ state: 'attached', timeout: 20_000 }).catch(() => undefined);
+      await settle(page, 300);
+      return page.locator(SEL.signedIn).first().isVisible().catch(() => false);
+    },
+
+    async authenticate(page, identity, creds) {
+      const loginPath = pathFor(identity);
+      log.step(`${identity} sign-in: opening ${loginPath}…`);
+      await page.goto(loginPath, { waitUntil: 'domcontentloaded' });
+      // The PIN input of a keypad is often visually hidden: attached is the honest wait.
+      await page.locator(`${SEL.pin}, ${SEL.signedIn}`).first().waitFor({ state: 'attached', timeout: 20_000 });
+      if (await page.locator(SEL.signedIn).first().isVisible().catch(() => false)) {
+        log.ok(`${identity} already signed in (${page.url()})`);
+        return;
+      }
+
+      log.step(`${identity} sign-in: entering PIN…`);
+      if (SEL.key) {
+        for (const d of creds.secret) await page.locator(SEL.key.split('{digit}').join(d)).first().click();
+      } else {
+        const pin = page.locator(SEL.pin).first();
+        await pin.fill('');
+        await pin.pressSequentially(creds.secret);
+      }
+
+      await page.locator(landed).first().waitFor({ state: 'visible', timeout: 25_000 }).catch(() => undefined);
+      await settle(page, 500);
+      if (SEL.mustChangePin && (await page.locator(SEL.mustChangePin).first().isVisible().catch(() => false))) {
+        throw new Error(
+          `${identity} sign-in: this account must choose its own PIN before it can be used. ` +
+            `Do that once by hand in a normal browser, then put the new PIN in apps/${profile.id}/.env.`,
+        );
+      }
+      if (!(await page.locator(SEL.signedIn).first().isVisible().catch(() => false))) {
+        const why = await visibleStatusText(page, status, SEL.error);
+        throw new Error(
+          `${identity} sign-in did not complete — still on ${page.url()}${why ? ` ("${why}")` : ''}. ` +
+            `Check ${creds.secretEnv} in apps/${profile.id}/.env.`,
         );
       }
       log.ok(`${identity} sign-in complete (${page.url()})`);
@@ -267,6 +366,7 @@ function formLogin(profile: AppProfile, userField: 'email' | 'username'): LoginA
 export function createLoginAdapter(profile: AppProfile): LoginAdapter {
   switch (profile.loginAdapter.type) {
     case 'mobile-pin': return mobilePin(profile);
+    case 'pin-only': return pinOnly(profile);
     case 'email-password': return formLogin(profile, 'email');
     case 'username-password': return formLogin(profile, 'username');
     default: {

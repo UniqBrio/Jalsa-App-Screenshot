@@ -313,7 +313,8 @@ const STEP_RESULT_KEYS = [
   'id', 'action', 'phase', 'selector', 'input', 'result', 'status', 'next_screen', 'screenshot_path', 'screenshot_paths',
   'capture_mode', 'visual_signals', 'capture_skipped_reason', 'dom_hash', 'fingerprint', 'duration_ms',
 ];
-const OPTIONAL_STEP_RESULT_KEYS = ['unstable', 'error'];
+// target_testid / url_after: run evidence for `coverage --evidence` (exercising steps / every step).
+const OPTIONAL_STEP_RESULT_KEYS = ['unstable', 'error', 'target_testid', 'url_after'];
 const FLOW_RUN_KEYS = ['module', 'flow', 'device', 'run_id', 'app_git_sha', 'status', 'reason', 'started_at', 'duration_ms', 'steps', 'screenshots', 'errors'];
 
 test('normal capture (no sink) is unchanged: manifest shape, baseline, output paths, and no probes in the page', async () => {

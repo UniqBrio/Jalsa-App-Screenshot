@@ -17,8 +17,9 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseSourceConfig, type SourceConfig } from './coverage/source-config';
 
-export const LOGIN_ADAPTERS = ['mobile-pin', 'email-password', 'username-password'] as const;
+export const LOGIN_ADAPTERS = ['mobile-pin', 'pin-only', 'email-password', 'username-password'] as const;
 export type LoginAdapterType = (typeof LOGIN_ADAPTERS)[number];
 
 export const FRAMEWORKS = ['react-native-web', 'nextjs', 'react', 'vue', 'angular', 'svelte', 'other'] as const;
@@ -38,13 +39,23 @@ export interface LoginAdapterConfig {
 }
 
 export interface AccountConfig {
-  /** Name of the app .env variable holding the login (mobile number, email or username). */
+  /**
+   * Name of the app .env variable holding the login (mobile number, email or
+   * username). Empty only under the `pin-only` adapter, where the PIN alone
+   * identifies the person.
+   */
   userEnv: string;
   /** Name of the app .env variable holding the secret (PIN or password). */
   secretEnv: string;
   /** Missing credentials skip this identity's flows with a reason instead of failing the run. */
   optional: boolean;
   description: string;
+  /**
+   * Where THIS account signs in, when an app has one sign-in screen per
+   * surface (an owner console and a staff handset). Overrides the adapter's
+   * loginPath for this identity. Supported by `pin-only`.
+   */
+  loginPath?: string;
 }
 
 /** How the app reveals, after sign-in, which tenant the session belongs to. */
@@ -164,6 +175,11 @@ export interface AppProfile {
   /** Selectors of nuisance overlays (nudges, cookie prompts) dismissed before each tap. */
   interstitials: string[];
   discovery: { navSources: DiscoveryNavSource[] };
+  /**
+   * Where the app's source is and how to read test ids and pages from it, for
+   * `npm run coverage` / `audit:coverage`. Null = not configured (capture still works).
+   */
+  source: SourceConfig | null;
 }
 
 const ID_RE = /^[a-z0-9_][a-z0-9_-]{0,39}$/;
@@ -255,6 +271,7 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
   };
 
   if (!ID_RE.test(id)) e.push(`app id "${id}": lower-case letters, digits, - and _ only`);
+  if (id === 'all') e.push('app id "all" is reserved: `--app all` means every registered app');
 
   const appName = reqStr('appName');
   const appDescription = reqStr('appDescription');
@@ -300,17 +317,25 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
         continue;
       }
       if (!a || typeof a !== 'object') { e.push(`${where}: an object`); continue; }
+      // A PIN-only sign-in has no login to look up: the PIN is the identity.
+      const pinOnly = la?.type === 'pin-only';
+      if (pinOnly && a.userEnv === undefined) a.userEnv = '';
       for (const k of ['userEnv', 'secretEnv']) {
+        if (k === 'userEnv' && pinOnly && a.userEnv === '') continue;
         if (typeof a[k] !== 'string' || !ENV_NAME_RE.test(a[k])) e.push(`${where}.${k}: an UPPER_SNAKE .env variable name`);
         else if (RESERVED_VARS.includes(a[k])) e.push(`${where}.${k}: "${a[k]}" is reserved by the engine`);
         else if (seenEnv.has(a[k])) e.push(`${where}.${k}: "${a[k]}" is already used by another account`);
         else seenEnv.add(a[k]);
+      }
+      if (a.loginPath !== undefined && (typeof a.loginPath !== 'string' || !a.loginPath.startsWith('/'))) {
+        e.push(`${where}.loginPath: a route starting with "/"`);
       }
       accounts[name] = {
         userEnv: a.userEnv,
         secretEnv: a.secretEnv,
         optional: a.optional === true,
         description: typeof a.description === 'string' ? a.description : '',
+        ...(typeof a.loginPath === 'string' ? { loginPath: a.loginPath } : {}),
       };
     }
   }
@@ -322,7 +347,7 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
   if (o.extraEnvVars !== undefined && (!Array.isArray(o.extraEnvVars) || !o.extraEnvVars.every((v: unknown) => typeof v === 'string' && ENV_NAME_RE.test(v)))) {
     e.push('extraEnvVars: an array of UPPER_SNAKE .env variable names');
   }
-  const credentialVars = new Set(Object.values(accounts).flatMap((a) => [a.userEnv, a.secretEnv]));
+  const credentialVars = new Set(Object.values(accounts).flatMap((a) => [a.userEnv, a.secretEnv]).filter(Boolean));
   for (const v of extraEnvVars) if (credentialVars.has(v)) e.push(`extraEnvVars: "${v}" is a credential variable`);
 
   // Dummy account.
@@ -417,6 +442,8 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
     });
   }
 
+  const source = parseSourceConfig(o.source, e);
+
   if (e.length) throw new Error(`${src} is invalid:\n  ${e.join('\n  ')}`);
 
   return {
@@ -451,6 +478,7 @@ export function parseProfile(raw: unknown, id: string, dir: string): AppProfile 
             { path: '/', items: 'nav a[href]', role: 'link', tab: false },
           ],
     },
+    source,
   };
 }
 

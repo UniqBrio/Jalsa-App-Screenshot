@@ -3,12 +3,17 @@
 .env.local
 *.key
 
-# App profiles are local: they hold real hosts, selectors, flows and saved
-# sessions. Only the documented template is committed.
-apps/*
-!apps/_template/
-apps/_template/.env
-apps/_template/.auth/
+# App profiles are committed — app.config.json, flows/ and config/ (routes,
+# inventories, coverage exceptions and backlog) are what CI audits, and none of
+# them holds a secret. What stays on the capturing machine: credentials, saved
+# sessions, and machine-written state.
+apps/*/.env
+apps/*/.auth/
+apps/*/fingerprints/
+apps/*/recordings/
+apps/*/docs/
+!apps/_template/fingerprints/
+!apps/_template/recordings/
 
 # saved browser sessions — live sessions for real accounts
 .auth/
@@ -41,6 +46,9 @@ Thumbs.db
 # change signal.
 runs/*
 !runs/README.md
+
+# Coverage and audit reports — regenerated on every run, uploaded by CI.
+reports/
 
 # user manual pipeline — raw evidence frames and JSON can hold personal data;
 # the DOCX is a release artifact, not a repo file

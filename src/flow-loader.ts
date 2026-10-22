@@ -126,7 +126,7 @@ const ROLE_TERM = /^role=[a-zA-Z]+(\[[^\]]*\])*$/;
  * Splits a selector into descendant terms, ignoring whitespace inside quotes
  * and brackets — `role=button[name="Save Draft"]` is one term, not two.
  */
-function splitTerms(selector: string): string[] {
+export function splitTerms(selector: string): string[] {
   const terms: string[] = [];
   let buf = '';
   let depth = 0;
@@ -724,7 +724,7 @@ export function loadFlows(opts: { includeDisabled?: boolean } = {}): LoadResult 
     const account = profile.accounts[flow.auth ?? profile.defaultAccount];
     if (account?.optional) {
       warnings.push(
-        `${rel}: auth "${flow.auth}" — runs only when ${account.userEnv} / ${account.secretEnv} are set ` +
+        `${rel}: auth "${flow.auth}" — runs only when ${[account.userEnv, account.secretEnv].filter(Boolean).join(' / ')} are set ` +
           `in apps/${profile.id}/.env; skipped otherwise.`,
       );
     }

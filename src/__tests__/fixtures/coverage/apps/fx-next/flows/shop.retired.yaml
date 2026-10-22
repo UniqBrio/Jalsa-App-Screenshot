@@ -1,0 +1,12 @@
+schema_version: 2
+module: shop
+flow: retired
+title: Retired delete flow
+disabled: true
+steps:
+  - id: 010-menu
+    action: goto
+    value: /menu
+  - id: 020-delete
+    action: click
+    selector: '[data-testid="menu-delete"]'

@@ -1,0 +1,7 @@
+{
+  "_global": { "flows": [], "source_paths": ["web/src/components/**", "web/src/app/layout.tsx"] },
+  "home": { "flows": ["home"], "source_paths": ["web/src/app/page.tsx", "web/src/app/hidden/**"] },
+  "shop": { "flows": ["menu"], "source_paths": ["web/src/app/(shop)/**"] },
+  "orders": { "flows": ["order"], "source_paths": ["web/src/app/orders/**"] },
+  "docs": { "flows": ["docs"], "source_paths": ["web/src/app/docs/**", "web/src/app/help/**"] }
+}

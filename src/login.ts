@@ -72,7 +72,7 @@ export async function getAuthenticatedContext(
   if (fs.existsSync(statePath)) {
     const ctx = await newContext(browser, statePath, device);
     const page = await ctx.newPage();
-    const ok = await loginAdapter().isAuthenticated(page).catch(() => false);
+    const ok = await loginAdapter().isAuthenticated(page, identity).catch(() => false);
     if (ok) {
       try {
         if (dummy) await assertDummy(page);

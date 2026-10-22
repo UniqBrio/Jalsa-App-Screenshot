@@ -59,6 +59,8 @@ cp apps/my-app/.env.example apps/my-app/.env
 | `config/known_routes.json` | The app's routes; `npm run discover` adds to it |
 | `config/pii-regions.json` | Evidence-mode PII classification: data regions and the label allowlist |
 | `config/manual-review-items.json` | Open questions carried into the evidence index |
+| `config/coverage-exceptions.json` | Approved coverage exceptions — one test id, family or page each, with a reason. Written by a person only |
+| `config/coverage-baseline.json` | The adoption backlog — uncovered on the day coverage was switched on. Only `--init-baseline` creates it; it only shrinks |
 | `fingerprints/baseline.json`, `last-run.json` | Written by runs |
 | `.auth/<identity>.json` | Saved sessions — **secret**, written by sign-in |
 | `docs/<Device>/<module>.md` | Generated documentation |
@@ -75,8 +77,9 @@ cp apps/my-app/.env.example apps/my-app/.env
 | `repoPath`, `repoBranch` | App repo clone for change detection (`APP_REPO_PATH` in `.env` overrides) |
 | `framework` | `react-native-web`, `nextjs`, `react`, `vue`, `angular`, `svelte`, `other` — switches framework-specific behaviour |
 | `theme`, `locale`, `timezone` | What the emulated browser reports |
-| `loginAdapter` | `email-password`, `username-password` or `mobile-pin`, with its selectors and options |
-| `accounts` | Identity → `.env` names of its login and secret; `optional: true` skips its flows when unset |
+| `loginAdapter` | `email-password`, `username-password`, `mobile-pin` or `pin-only`, with its selectors and options |
+| `accounts` | Identity → `.env` names of its login and secret (`pin-only`: the secret only); `optional: true` skips its flows when unset; `loginPath` gives one account its own sign-in screen |
+| `source` | Where the app's source is and how to read it, for coverage: `repository` (owner/name), `include`/`exclude` globs (repo-relative), `testIdAttributes`, extra `interactive` elements/handlers, and `routes` (`nextjs-app` \| `expo-router` \| `none`, `appDir`, optional `nextConfig`). Reference: `docs/COVERAGE.md` |
 | `defaultAccount` | Identity for flows without `auth:` (never `dummy`) |
 | `dummyAccount` | Expected tenant id + name after the dummy signs in, and how to read them; `messagingSuppressed` |
 | `dataIsolation` | `separate-project` \| `separate-tenant` \| `none`. Default `none` — **refuses every write** |
@@ -241,6 +244,21 @@ Checks the profile and its login adapter, every manifest against the schema,
 the selector policy and the write rules, and the host gate. **Fix all errors
 before capturing.** Nothing is written.
 
+### Step 0b — Coverage audit (static, seconds, no browser)
+
+```bash
+export APP_REPO_PATH_MY_APP=~/code/my-app      # or APP_REPO_PATH in apps/my-app/.env
+npm run audit:coverage -- --app my-app          # or --app all
+```
+
+Config → inventory → test-id coverage → page inventory → validate → summary.
+Fix what it lists **before** capturing: a NEW uncovered element or page needs a
+flow step that exercises/visits it, or a reasoned entry in
+`config/coverage-exceptions.json`; a stale reference needs its flow fixed. Exit
+0 PASS · 1 FAIL · 2 CONFIG · 3 BLOCKED (did not run — never a pass). Reports
+land in `reports/`. First time for an app with existing code:
+`--register-routes`, review, then `--init-baseline` (`docs/COVERAGE.md` §3).
+
 ### Step 1 — Plan without a browser (optional)
 
 ```bash
@@ -379,7 +397,9 @@ npm run typecheck
 | `apps/<app-id>/flows/_drafts/*.yaml` | `discover`, `record:convert` | Unreviewed drafts, never executed | Review first |
 | `apps/<app-id>/.auth/*.json` | sign-in | Live session state — **secret** | **Never** |
 
-`apps/*` except `apps/_template/` is gitignored, as are `runs/` and `evidence/`.
+| `reports/<app-id>/coverage.json`, `reports/audit-summary.{json,md}` | `coverage`, `audit:coverage` | Coverage findings and the audit summary | No |
+
+App profiles are committed except `.env`, `.auth/`, `fingerprints/`, `recordings/` and `docs/`; `runs/`, `evidence/` and `reports/` are gitignored.
 
 ### Evidence run — `evidence/<app-id>/<run-id>/`
 
@@ -399,11 +419,13 @@ npm run typecheck
 ## 6. Order of operations, at a glance
 
 ```
-validate → capture:dry → capture ─────────────────────→ docs
-                             │
-                             └→ capture:evidence → evidence:check → label-review.txt (human)
-                                                        │
-                                                        └→ evidence:index → evidence:index:check
+audit:coverage → validate → capture:dry → capture ────→ docs
+                                            │
+                                            └→ audit:coverage --evidence   (what the run really pressed)
+                                            │
+                                            └→ capture:evidence → evidence:check → label-review.txt (human)
+                                                                       │
+                                                                       └→ evidence:index → evidence:index:check
 ```
 
 A gate that fails stops the line. Fix the cause, re-run from the capture step.
@@ -412,9 +434,12 @@ A gate that fails stops the line. Fix the cause, re-run from the capture step.
 
 ## 7. Limits you should know about
 
-1. **No proof that every page was captured.** `known_routes.json` is maintained
-   by hand and by `discover`, which only finds pages reachable from the live
-   navigation. Nothing yet compares it against the app repo's route files.
+1. **Page discovery reads two routers.** `audit:coverage` compares
+   `known_routes.json` with the app repo's route files for Next.js App Router and
+   Expo Router; an app on another router declares `strategy: "none"` and gets no
+   page check. A file route is a page whether or not anyone can reach it, and
+   middleware rewrites are not read. Coverage has its own limits:
+   `docs/COVERAGE.md` §2.
 2. **The C2 evidence index is not device-aware yet.** C1 evidence is written
    per device (`<Device>/…`); `evidence:index` still expects the older
    single-device layout. Run C2 on single-device evidence until it is updated.

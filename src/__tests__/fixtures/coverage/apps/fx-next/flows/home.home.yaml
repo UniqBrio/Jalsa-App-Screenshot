@@ -1,0 +1,12 @@
+schema_version: 2
+module: home
+flow: home
+title: Home
+description: Opens home and taps the menu link.
+steps:
+  - id: 010-home
+    action: goto
+    value: /
+  - id: 020-menu
+    action: click
+    selector: '[data-testid="home-menu"]'

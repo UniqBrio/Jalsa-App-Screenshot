@@ -1,0 +1,5 @@
+{
+  "_global": { "flows": [], "source_paths": ["src/components/**", "app/_layout.tsx"] },
+  "home": { "flows": ["home"], "source_paths": ["app/(tabs)/**"] },
+  "course": { "flows": [], "source_paths": ["app/course/**"] }
+}

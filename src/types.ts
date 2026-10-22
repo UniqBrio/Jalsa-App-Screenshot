@@ -261,6 +261,15 @@ export interface StepResult {
   unstable?: boolean;
   /** Set when an optional step was skipped and the manifest says why. */
   skip_reason?: string | null;
+  /**
+   * Exercising steps only: the data-testid of the element the step actually
+   * pressed, read from the live DOM just before the action (null when it has
+   * none). This is what coverage --evidence counts — it resolves role= and
+   * prefix selectors to the one element they hit.
+   */
+  target_testid?: string | null;
+  /** Path (no origin, query or hash) the page was on after the step. */
+  url_after?: string | null;
   duration_ms: number;
   error?: string;
 }
@@ -332,6 +341,14 @@ export interface KnownRoute {
   module?: string;
   /** Set when discovery found it but no flow covers it yet. */
   uncovered?: boolean;
+  /**
+   * page (default) — a file route the coverage check verifies exists in the source.
+   * virtual — not a file route (a query-string screen, an external hand-off):
+   *           listed, never verified against the source.
+   */
+  kind?: 'page' | 'virtual';
+  /** Repo-relative file that defines it, as the page check found it. Informational. */
+  source?: string;
 }
 export interface KnownRoutes {
   last_checked: string;
