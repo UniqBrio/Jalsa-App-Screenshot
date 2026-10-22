@@ -1,0 +1,89 @@
+# The two side paths off the PIN step: changing the number, and Forgot PIN.
+#
+# auth: none — fresh signed-out context. READ-ONLY: the recovery form is
+# captured, never submitted (forgot-pin-submit is never pressed — a wrong
+# answer counts against the account's lock-out).
+schema_version: 2
+module: signin
+flow: forgot-pin
+title: Change number and Forgot PIN
+description: From the PIN step, go back to change the number, then open the Forgot PIN recovery screen and return.
+scenario_class: happy
+auth: none
+audience: academy owner
+settle_ms: 500
+
+depends_on_routes:
+  - /
+  - /forgot-pin
+
+steps:
+  - id: 010-sign-in-screen
+    action: goto
+    value: /
+    label: The sign-in screen
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="signin-phone"]'
+
+  - id: 020-enter-number
+    action: type
+    selector: '[data-testid="signin-phone"]'
+    value: "{{SIGNIN_MOBILE}}"
+    run_tag: false
+    label: Mobile number entered
+    screenshot: false
+
+  - id: 030-continue
+    action: click
+    selector: '[data-testid="signin-continue"]'
+    label: Continue to the PIN step
+    screenshot: false
+    settle_ms: 800
+
+  - id: 040-pin-screen
+    action: waitFor
+    selector: '[data-testid="signin-pin"]'
+    state: visible
+    label: The PIN step, showing the number it is for
+    expect_screen: sign-in-pin
+    screenshot: false
+
+  # "Change mobile number" returns to the number step with the number kept.
+  - id: 050-change-number
+    action: click
+    selector: '[data-testid="signin-change-number"]'
+    label: Back to the number step, number retained
+    expect_screen: sign-in-number-retained
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="signin-phone"]'
+
+  - id: 060-continue-again
+    action: click
+    selector: '[data-testid="signin-continue"]'
+    label: Continue again
+    screenshot: false
+    settle_ms: 800
+
+  - id: 070-forgot-pin
+    action: click
+    selector: '[data-testid="signin-forgot-pin"]'
+    label: Forgot PIN? — the recovery screen
+    expect_screen: forgot-pin
+    screenshot: full
+    settle_ms: 1200
+    assert:
+      url_contains: /forgot-pin
+
+  # Whichever state the recovery screen is in (question form, staff notice,
+  # locked, or "already requested"), every one carries a "Back to sign in"
+  # button; the test id differs per state, the accessible name does not.
+  - id: 080-back-to-sign-in
+    action: click
+    selector: 'role=button[name="Back to sign in"]'
+    label: Back to sign in
+    expect_screen: sign-in
+    screenshot: viewport
+    settle_ms: 1000

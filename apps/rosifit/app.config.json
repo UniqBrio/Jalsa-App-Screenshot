@@ -1,0 +1,62 @@
+{
+  "$comment": [
+    "RosiFit — ported from UniqBrio/RosiFit-App-Screenshot (flows, routes.map.json, known_routes.json",
+    "copied unchanged on 2026-10-22; sign-in selectors from its src/login.ts). The live app has ONE",
+    "deployment and ONE Supabase project and no test environment, so this profile is read-only: no",
+    "dummy account, dataIsolation none. Field reference: apps/_template/app.config.json."
+  ],
+  "appName": "RosiFit",
+  "appDescription": "A fitness academy app: an owner tracks courses, members, attendance and weekly follow-ups from a phone.",
+  "baseUrl": "https://rosi-fit.vercel.app",
+  "allowedHosts": ["rosi-fit.vercel.app", "localhost", "127.0.0.1"],
+  "writeAllowedHosts": [],
+  "repoPath": "",
+  "repoBranch": "main",
+  "framework": "react-native-web",
+  "theme": "dark",
+  "locale": "en-IN",
+  "timezone": "Asia/Kolkata",
+  "docsAudience": "an academy owner",
+  "loginAdapter": {
+    "type": "mobile-pin",
+    "selectors": {
+      "phone": "[data-testid=\"signin-phone\"]",
+      "continue": "[data-testid=\"signin-continue\"]",
+      "pin": "[data-testid=\"signin-pin\"]",
+      "signedIn": "[data-testid=\"shell-academy\"]",
+      "mustChangePin": "[data-testid=\"setpin-field\"]"
+    },
+    "options": { "countryCode": "91", "mobileDigits": 10, "pinDigits": 4, "loginPath": "/" }
+  },
+  "accounts": {
+    "admin": {
+      "description": "The super admin. A real account on the live app — permanently READ-ONLY.",
+      "userEnv": "SIGNIN_MOBILE",
+      "secretEnv": "SIGNIN_PIN"
+    },
+    "staff": {
+      "description": "A staff account (lands on Attendance). Optional: its flows are skipped until set.",
+      "userEnv": "STAFF_MOBILE",
+      "secretEnv": "STAFF_PIN",
+      "optional": true
+    }
+  },
+  "defaultAccount": "admin",
+  "extraEnvVars": ["FIXED_COURSE_ID", "FIXED_MEMBER_ID"],
+  "interstitials": [],
+  "discovery": {
+    "navSources": [
+      { "path": "/", "items": "[role=\"tablist\"] [role=\"tab\"]", "role": "tab", "tab": true },
+      { "path": "/more", "items": "[role=\"button\"][aria-label]", "role": "button", "labelAttribute": "aria-label", "labelCut": ",.", "tab": false }
+    ]
+  },
+  "dataIsolation": "none",
+  "outboundKillSwitch": null,
+  "pii": { "phonePattern": "(?:\\+?91[\\s-]?)?[6-9]\\d{4}[\\s-]?\\d{5}" },
+  "source": {
+    "repository": "UniqBrio/RosiFit",
+    "include": ["app/**/*.tsx", "app/**/*.ts", "src/**/*.tsx", "src/**/*.ts"],
+    "testIdAttributes": ["data-testid", "testID"],
+    "routes": { "strategy": "expo-router", "appDir": "app" }
+  }
+}

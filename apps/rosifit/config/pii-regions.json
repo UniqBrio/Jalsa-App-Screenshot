@@ -1,0 +1,15 @@
+{
+  "$comment": [
+    "Capture-time PII classification, read by evidence mode (npm run capture:evidence) only.",
+    "data_regions: every text inside a matching element takes the region's class —",
+    "  P customer/member data, O organisation data, I operator identifier. Match by testid (exact),",
+    "  testid_family (id suffix normalised, e.g. order-row-*), or role + name_regex.",
+    "  Id-suffixed test ids and repeated list items are class P automatically even when not listed.",
+    "label_texts: exact application copy (case-insensitive) that is always class L (safe to publish).",
+    "  Extend it from evidence/<app-id>/<run>/label-review.txt after review."
+  ],
+  "data_regions": [
+    { "id": "tenant-header", "class": "O", "match": { "testid": "tenant-name" } }
+  ],
+  "label_texts": ["Home", "Search"]
+}

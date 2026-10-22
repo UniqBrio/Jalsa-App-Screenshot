@@ -1,0 +1,64 @@
+{
+  "$comment": [
+    "Jalsa — QR dine-in ordering (UniqBrio/JalsaRestaurant, the Next.js app in jalsa/). Three surfaces:",
+    "guest (/t/<table>, no sign-in), captain (/staff) and owner (/owner), the last two behind ONE",
+    "four-digit PIN keypad with a session per surface — hence pin-only with a loginPath per account.",
+    "Production is not provisioned (jalsa/docs/registers/ENVIRONMENTS.md), so baseUrl is local",
+    "development. Seeded PINs (1234) are provisional and only open 'choose your own PIN': an account",
+    "needs its own PIN before it can be captured. Read-only: dataIsolation none.",
+    "Field reference: apps/_template/app.config.json."
+  ],
+  "appName": "Jalsa",
+  "appDescription": "QR dine-in ordering for one restaurant: guests order from their table, captains work the floor, the owner runs the till.",
+  "baseUrl": "http://localhost:3000",
+  "allowedHosts": ["localhost", "127.0.0.1"],
+  "writeAllowedHosts": [],
+  "repoPath": "",
+  "repoBranch": "main",
+  "framework": "nextjs",
+  "theme": "light",
+  "locale": "en-IN",
+  "timezone": "Asia/Kolkata",
+  "docsAudience": "a restaurant owner or captain",
+  "loginAdapter": {
+    "type": "pin-only",
+    "selectors": {
+      "pin": "[data-testid=\"staff-pin-input\"]",
+      "key": "[data-testid=\"staff-key-{digit}\"]",
+      "signedIn": "[data-testid=\"owner-console\"], [data-testid=\"staff-app\"]",
+      "error": "[data-testid=\"staff-pin-error\"]",
+      "mustChangePin": "[data-testid=\"staff-choose-pin\"]"
+    },
+    "options": { "pinDigits": 4, "loginPath": "/staff" }
+  },
+  "accounts": {
+    "owner": {
+      "description": "The owner console. A real account — permanently READ-ONLY.",
+      "secretEnv": "OWNER_PIN",
+      "loginPath": "/owner"
+    },
+    "captain": {
+      "description": "A captain's handset. Optional: its flows are skipped until set.",
+      "secretEnv": "CAPTAIN_PIN",
+      "loginPath": "/staff",
+      "optional": true
+    }
+  },
+  "defaultAccount": "owner",
+  "extraEnvVars": ["GUEST_TABLE"],
+  "interstitials": [],
+  "discovery": {
+    "navSources": [
+      { "path": "/", "items": "a[href]", "role": "link", "tab": false }
+    ]
+  },
+  "dataIsolation": "none",
+  "outboundKillSwitch": null,
+  "pii": { "phonePattern": "(?:\\+?91[\\s-]?)?[6-9]\\d{4}[\\s-]?\\d{5}" },
+  "source": {
+    "repository": "UniqBrio/JalsaRestaurant",
+    "include": ["jalsa/src/**/*.tsx", "jalsa/src/**/*.ts"],
+    "testIdAttributes": ["data-testid", "testId"],
+    "routes": { "strategy": "nextjs-app", "appDir": "jalsa/src/app", "nextConfig": "jalsa/next.config.ts" }
+  }
+}

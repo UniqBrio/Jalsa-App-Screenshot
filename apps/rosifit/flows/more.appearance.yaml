@@ -1,0 +1,45 @@
+# Appearance — captured as it is. The theme and accent choices are SAVED to
+# the account (they follow the user to other devices), so nothing here is
+# toggled: a capture run must not restyle the academy's app.
+schema_version: 2
+module: more
+flow: appearance
+title: Appearance
+description: The Appearance screen — theme, accent presets and the custom colour — exactly as currently set.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /more
+  - /appearance
+
+steps:
+  - id: 010-more
+    action: goto
+    value: /more
+    label: More
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: 'role=button[name=/^Appearance/]'
+
+  - id: 020-open-appearance
+    action: click
+    selector: 'role=button[name=/^Appearance/]'
+    label: Appearance
+    expect_screen: appearance
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      url_contains: /appearance
+      selector_visible: '[data-testid="appearance-theme-dark"]'
+
+  - id: 030-back
+    action: click
+    selector: '[data-testid="screen-back"]'
+    label: Back to More
+    expect_screen: more
+    screenshot: false
+    settle_ms: 1000

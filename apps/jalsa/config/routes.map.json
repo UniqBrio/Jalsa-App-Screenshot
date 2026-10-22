@@ -1,0 +1,39 @@
+{
+  "$comment": [
+    "module -> { flows it owns, source paths in UniqBrio/JalsaRestaurant that can affect it }.",
+    "Paths are relative to the REPO root (the app lives in jalsa/), matched against `git diff --name-only`",
+    "for the capture skip filter and used by `npm run coverage` to group findings by module.",
+    "Taken from the real tree on 2026-10-22. Err broad: too narrow means a missed change."
+  ],
+  "_global": {
+    "flows": [],
+    "source_paths": [
+      "jalsa/src/app/layout.tsx",
+      "jalsa/src/app/globals.css",
+      "jalsa/src/components/**",
+      "jalsa/src/hooks/**",
+      "jalsa/src/lib/**",
+      "jalsa/src/theme/**",
+      "jalsa/src/middleware.ts",
+      "jalsa/design/**",
+      "jalsa/next.config.ts",
+      "jalsa/package.json"
+    ]
+  },
+  "home": {
+    "flows": [],
+    "source_paths": ["jalsa/src/app/page.tsx", "jalsa/src/app/offline/**", "jalsa/src/app/q/**"]
+  },
+  "guest": {
+    "flows": [],
+    "source_paths": ["jalsa/src/app/t/**", "jalsa/src/features/guest/**", "jalsa/src/app/api/guest/**", "jalsa/src/app/api/media/**"]
+  },
+  "staff": {
+    "flows": [],
+    "source_paths": ["jalsa/src/app/staff/**", "jalsa/src/features/staff/**", "jalsa/src/app/api/staff/**"]
+  },
+  "owner": {
+    "flows": [],
+    "source_paths": ["jalsa/src/app/owner/**", "jalsa/src/features/owner/**", "jalsa/src/app/api/owner/**", "jalsa/src/app/api/bridge/**", "jalsa/bridge/**"]
+  }
+}

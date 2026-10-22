@@ -1,0 +1,177 @@
+{
+  "$comment": [
+    "module -> { flows it owns, source paths in the RosiFit app repo that can affect it }.",
+    "source_paths are glob patterns matched against `git diff --name-only` output",
+    "from APP_REPO_PATH (a clone of github.com/UniqBrio/RosiFit). No matching diff",
+    "since the last successful run => the whole module is skipped for zero cost.",
+    "",
+    "Paths were taken from the real repo layout (expo-router: app/**, shared code",
+    "under src/**) on 2026-09-12. Err broad: a glob that is too narrow means a",
+    "missed change, which is the failure mode that matters."
+  ],
+  "_global": {
+    "flows": [],
+    "source_paths": [
+      "app/_layout.tsx",
+      "app/+html.tsx",
+      "app/(tabs)/_layout.tsx",
+      "src/components/AppShell.tsx",
+      "src/components/ui.tsx",
+      "src/components/Icon.tsx",
+      "src/components/Sheet.tsx",
+      "src/components/Dropdown.tsx",
+      "src/components/AnchoredPanel.tsx",
+      "src/components/FormDialog.tsx",
+      "src/components/Toast.tsx",
+      "src/theme/**",
+      "src/data/session.ts",
+      "src/data/access.ts",
+      "src/data/api.ts",
+      "src/data/hooks.ts",
+      "src/data/repository.ts",
+      "src/lib/**",
+      "src/pwa/**",
+      "app.json",
+      "package.json",
+      "vercel.json"
+    ]
+  },
+  "signin": {
+    "flows": ["sign-in-journey", "forgot-pin"],
+    "source_paths": [
+      "app/index.tsx",
+      "app/forgot-pin.tsx",
+      "app/register.tsx",
+      "app/set-pin.tsx",
+      "src/data/signin.ts",
+      "src/data/sessionRestore.ts",
+      "src/components/keypadGrid.ts",
+      "src/components/useGoToSignIn.ts",
+      "supabase/functions/auth-*/**"
+    ]
+  },
+  "overview": {
+    "flows": ["overview-home"],
+    "source_paths": [
+      "app/(tabs)/index.tsx",
+      "src/components/AttendanceBars.tsx",
+      "src/components/AttendanceRings.tsx",
+      "src/components/Donut.tsx",
+      "src/components/PeriodFilter.tsx",
+      "src/components/FilterBar.tsx",
+      "src/data/overview*.ts",
+      "src/data/buckets.ts",
+      "src/data/period*.ts",
+      "src/data/distribution*.ts"
+    ]
+  },
+  "attendance": {
+    "flows": ["courses-workspace", "course-detail", "attendance-register"],
+    "source_paths": [
+      "app/(tabs)/courses.tsx",
+      "app/(tabs)/attendance.tsx",
+      "app/course/**",
+      "app/offering/**",
+      "src/components/TokenChips.tsx",
+      "src/components/Tooltip.tsx",
+      "src/data/course*.ts",
+      "src/data/dayAttendance.ts",
+      "src/data/dayLoad.ts",
+      "src/data/attendance*.ts",
+      "src/data/schedule.ts",
+      "src/data/rosterFilter.ts",
+      "src/data/holiday.ts",
+      "supabase/functions/attendance-*/**"
+    ]
+  },
+  "members": {
+    "flows": ["member-directory", "member-detail"],
+    "source_paths": [
+      "app/(tabs)/members.tsx",
+      "app/member/**",
+      "src/components/MemberRow.tsx",
+      "src/components/memberDialog.ts",
+      "src/components/FollowUpTriggerPanel.tsx",
+      "src/data/member*.ts",
+      "src/data/alias.ts",
+      "src/data/joined.ts",
+      "src/data/inactiveFrom.ts",
+      "src/data/streak.ts"
+    ]
+  },
+  "weekly": {
+    "flows": ["weekly-review"],
+    "source_paths": [
+      "app/(tabs)/weekly.tsx",
+      "src/data/followup*.ts",
+      "src/data/memberWeek.ts",
+      "src/data/reachOut.ts",
+      "src/data/pending.ts"
+    ]
+  },
+  "reports": {
+    "flows": ["reports-overview"],
+    "source_paths": [
+      "app/(tabs)/reports.tsx",
+      "src/data/report*.ts",
+      "src/data/reportSheets.ts",
+      "src/data/reportXlsx.ts"
+    ]
+  },
+  "notifications": {
+    "flows": ["notification-panel"],
+    "source_paths": [
+      "src/components/Notifications.tsx",
+      "src/data/notifications.ts"
+    ]
+  },
+  "more": {
+    "flows": ["more-menu", "profile", "branches", "appearance", "help"],
+    "source_paths": [
+      "app/(tabs)/more.tsx",
+      "app/profile.tsx",
+      "app/change-mobile.tsx",
+      "app/branches.tsx",
+      "app/appearance.tsx",
+      "app/help.tsx",
+      "src/data/signOutPrompt.ts",
+      "src/data/mock.ts"
+    ]
+  },
+  "staff": {
+    "flows": ["staff-access"],
+    "source_paths": [
+      "app/staff/**",
+      "supabase/functions/staff-*/**",
+      "supabase/functions/pin-*/**"
+    ]
+  },
+  "audit": {
+    "flows": ["audit-log"],
+    "source_paths": [
+      "app/audit.tsx",
+      "src/data/audit*.ts"
+    ]
+  },
+  "upload": {
+    "flows": ["upload-attendance"],
+    "source_paths": [
+      "app/upload.tsx",
+      "src/data/upload*.ts",
+      "src/data/meetCsv.ts",
+      "src/data/csv*.ts",
+      "supabase/functions/upload-*/**"
+    ]
+  },
+  "send": {
+    "flows": ["send-communication"],
+    "source_paths": [
+      "app/send/**",
+      "src/data/message.ts",
+      "src/data/recipients*.ts",
+      "src/data/sent.ts",
+      "src/data/unsubscribeToken*.ts",
+      "supabase/functions/send-*/**"
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$comment": "Page inventory. `npm run coverage` compares it with the pages in the source (Next.js App Router, jalsa/src/app); `npm run discover` adds what the live navigation reaches. `--register-routes` appends source pages that are missing — review its labels and modules.",
+  "last_checked": "",
+  "routes": [
+    {
+      "path": "/",
+      "label": "Home",
+      "tab": false,
+      "module": "home",
+      "source": "jalsa/src/app/page.tsx"
+    },
+    {
+      "path": "/offline",
+      "label": "Offline",
+      "tab": false,
+      "module": "home",
+      "source": "jalsa/src/app/offline/page.tsx"
+    },
+    {
+      "path": "/owner",
+      "label": "Owner",
+      "tab": false,
+      "module": "owner",
+      "source": "jalsa/src/app/owner/page.tsx"
+    },
+    {
+      "path": "/q",
+      "label": "Q",
+      "tab": false,
+      "module": "home",
+      "source": "jalsa/src/app/q/page.tsx"
+    },
+    {
+      "path": "/staff",
+      "label": "Staff",
+      "tab": false,
+      "module": "staff",
+      "source": "jalsa/src/app/staff/page.tsx"
+    },
+    {
+      "path": "/t/[table]",
+      "label": "Table",
+      "tab": false,
+      "module": "guest",
+      "source": "jalsa/src/app/t/[table]/page.tsx"
+    }
+  ]
+}

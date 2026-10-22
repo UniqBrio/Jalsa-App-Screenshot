@@ -1,0 +1,286 @@
+{
+  "$comment": "Page inventory. `npm run coverage` compares it with the pages in the source (Expo Router, app/); `npm run discover` adds what the live navigation reaches. `--register-routes` appends source pages that are missing — review its labels and modules.",
+  "last_checked": "",
+  "routes": [
+    {
+      "path": "/add-class-modal",
+      "label": "Add class modal",
+      "tab": false,
+      "module": "home",
+      "source": "app/(tabs)/(home)/add-class-modal.tsx"
+    },
+    {
+      "path": "/attendance-modal",
+      "label": "Attendance modal",
+      "tab": false,
+      "module": "home",
+      "source": "app/(tabs)/(home)/attendance-modal.tsx"
+    },
+    {
+      "path": "/billing",
+      "label": "Billing",
+      "tab": false,
+      "module": "billing",
+      "source": "app/(tabs)/(home)/billing/index.tsx"
+    },
+    {
+      "path": "/billing/BillingScreen",
+      "label": "BillingScreen",
+      "tab": false,
+      "module": "billing",
+      "source": "app/(tabs)/(home)/billing/BillingScreen.tsx"
+    },
+    {
+      "path": "/billing/invoices",
+      "label": "Invoices",
+      "tab": false,
+      "module": "billing",
+      "source": "app/(tabs)/(home)/billing/invoices.tsx"
+    },
+    {
+      "path": "/business-registration",
+      "label": "Business registration",
+      "tab": false,
+      "module": "signin",
+      "source": "app/business-registration.tsx"
+    },
+    {
+      "path": "/customize-app",
+      "label": "Customize app",
+      "tab": false,
+      "module": "settings",
+      "source": "app/(tabs)/(home)/customize-app.tsx"
+    },
+    {
+      "path": "/formsheet",
+      "label": "Formsheet",
+      "tab": false,
+      "module": "unmapped",
+      "source": "app/formsheet.tsx"
+    },
+    {
+      "path": "/home-dashboard",
+      "label": "Home dashboard",
+      "tab": false,
+      "module": "home",
+      "source": "app/(tabs)/(home)/home-dashboard.tsx"
+    },
+    {
+      "path": "/login",
+      "label": "Login",
+      "tab": false,
+      "module": "signin",
+      "source": "app/login.tsx"
+    },
+    {
+      "path": "/manage",
+      "label": "Manage",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage.tsx"
+    },
+    {
+      "path": "/manage/brand-video",
+      "label": "Brand video",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/brand-video/index.tsx"
+    },
+    {
+      "path": "/manage/brand-video/brand-settings",
+      "label": "Brand settings",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/brand-video/brand-settings.tsx"
+    },
+    {
+      "path": "/manage/brand-video/create/step1",
+      "label": "Step1",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/brand-video/create/step1.tsx"
+    },
+    {
+      "path": "/manage/brand-video/create/step2",
+      "label": "Step2",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/brand-video/create/step2.tsx"
+    },
+    {
+      "path": "/manage/brand-video/create/step3",
+      "label": "Step3",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/brand-video/create/step3.tsx"
+    },
+    {
+      "path": "/manage/brand-video/create/step4",
+      "label": "Step4",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/brand-video/create/step4.tsx"
+    },
+    {
+      "path": "/manage/brand-video/result",
+      "label": "Result",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/brand-video/result.tsx"
+    },
+    {
+      "path": "/manage/settings",
+      "label": "Settings",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/index.tsx"
+    },
+    {
+      "path": "/manage/settings/achievements",
+      "label": "Achievements",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/achievements.tsx"
+    },
+    {
+      "path": "/manage/settings/brand",
+      "label": "Brand",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/brand.tsx"
+    },
+    {
+      "path": "/manage/settings/business-hours",
+      "label": "Business hours",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/business-hours.tsx"
+    },
+    {
+      "path": "/manage/settings/feedback",
+      "label": "Feedback",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/feedback.tsx"
+    },
+    {
+      "path": "/manage/settings/frame-builder",
+      "label": "Frame builder",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/frame-builder.tsx"
+    },
+    {
+      "path": "/manage/settings/holidays",
+      "label": "Holidays",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/holidays.tsx"
+    },
+    {
+      "path": "/manage/settings/leave-requests",
+      "label": "Leave requests",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/leave-requests.tsx"
+    },
+    {
+      "path": "/manage/settings/receipt-template",
+      "label": "Receipt template",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/receipt-template.tsx"
+    },
+    {
+      "path": "/manage/settings/why-choose-us",
+      "label": "Why choose us",
+      "tab": false,
+      "module": "manage",
+      "source": "app/(tabs)/(home)/manage/settings/why-choose-us.tsx"
+    },
+    {
+      "path": "/modal",
+      "label": "Modal",
+      "tab": false,
+      "module": "unmapped",
+      "source": "app/modal.tsx"
+    },
+    {
+      "path": "/notifications",
+      "label": "Notifications",
+      "tab": false,
+      "module": "home",
+      "source": "app/(tabs)/(home)/notifications.tsx"
+    },
+    {
+      "path": "/profile",
+      "label": "Profile",
+      "tab": false,
+      "module": "settings",
+      "source": "app/(tabs)/profile.ios.tsx"
+    },
+    {
+      "path": "/reports",
+      "label": "Reports",
+      "tab": false,
+      "module": "reports",
+      "source": "app/(tabs)/(home)/reports/index.tsx"
+    },
+    {
+      "path": "/schedules",
+      "label": "Schedules",
+      "tab": false,
+      "module": "home",
+      "source": "app/(tabs)/(home)/schedules.tsx"
+    },
+    {
+      "path": "/settings",
+      "label": "Settings",
+      "tab": false,
+      "module": "settings",
+      "source": "app/(tabs)/(home)/settings.tsx"
+    },
+    {
+      "path": "/staff-login",
+      "label": "Staff login",
+      "tab": false,
+      "module": "signin",
+      "source": "app/staff-login.tsx"
+    },
+    {
+      "path": "/staff-more",
+      "label": "Staff more",
+      "tab": false,
+      "module": "staff",
+      "source": "app/(tabs)/(home)/staff-more.tsx"
+    },
+    {
+      "path": "/staff-no-access",
+      "label": "Staff no access",
+      "tab": false,
+      "module": "signin",
+      "source": "app/staff-no-access.tsx"
+    },
+    {
+      "path": "/staff-set-pin",
+      "label": "Staff set pin",
+      "tab": false,
+      "module": "signin",
+      "source": "app/staff-set-pin.tsx"
+    },
+    {
+      "path": "/transparent-modal",
+      "label": "Transparent modal",
+      "tab": false,
+      "module": "unmapped",
+      "source": "app/transparent-modal.tsx"
+    },
+    {
+      "path": "/welcome-aboard",
+      "label": "Welcome aboard",
+      "tab": false,
+      "module": "signin",
+      "source": "app/welcome-aboard.tsx"
+    }
+  ]
+}

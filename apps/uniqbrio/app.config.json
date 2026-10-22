@@ -1,0 +1,55 @@
+{
+  "$comment": [
+    "UniqBrio — academy management (UniqBrio/UniqBrio-Mobile-App, an Expo Router PWA). Registered for",
+    "coverage and page audits on 2026-10-22. Sign-in selectors are the app's own test ids (app/login.tsx):",
+    "mobile → Get OTP → 4-digit OTP → Verify. baseUrl is TEST_APP_URL from UniqBrio_App_Screenshot_Capture.",
+    "Its twelve legacy flows there are Phase-1 placeholders written for a different engine (several write",
+    "data through a cleanup module this engine does not have) and were NOT ported: port each one through",
+    "`npm run validate` once its selectors are verified. Read-only: dataIsolation none.",
+    "The app repo is PRIVATE: CI needs a read token to audit it (see README, 'Apps in separate repositories').",
+    "Field reference: apps/_template/app.config.json."
+  ],
+  "appName": "UniqBrio Mobile",
+  "appDescription": "Academy management for arts and sports academies: students, attendance, fees, staff and enquiries.",
+  "baseUrl": "https://app.uniqbrio.com",
+  "allowedHosts": ["app.uniqbrio.com", "localhost", "127.0.0.1"],
+  "writeAllowedHosts": [],
+  "repoPath": "",
+  "repoBranch": "main",
+  "framework": "react-native-web",
+  "theme": "light",
+  "locale": "en-IN",
+  "timezone": "Asia/Kolkata",
+  "docsAudience": "an academy owner",
+  "loginAdapter": {
+    "type": "mobile-pin",
+    "selectors": {
+      "phone": "[data-testid=\"login-phone\"]",
+      "continue": "[data-testid=\"login-get-otp\"]",
+      "pin": "[data-testid=\"login-otp\"]",
+      "submit": "[data-testid=\"login-verify-otp\"]",
+      "signedIn": "[data-testid^=\"tabbar-\"]"
+    },
+    "options": { "countryCode": "91", "mobileDigits": 10, "pinDigits": 4, "loginPath": "/login" }
+  },
+  "accounts": {
+    "owner": {
+      "description": "An academy owner on the TEST environment. Permanently READ-ONLY here.",
+      "userEnv": "OWNER_MOBILE",
+      "secretEnv": "OWNER_OTP"
+    }
+  },
+  "defaultAccount": "owner",
+  "extraEnvVars": [],
+  "interstitials": [],
+  "dataIsolation": "none",
+  "outboundKillSwitch": null,
+  "pii": { "phonePattern": "(?:\\+?91[\\s-]?)?[6-9]\\d{4}[\\s-]?\\d{5}" },
+  "source": {
+    "repository": "UniqBrio/UniqBrio-Mobile-App",
+    "include": ["app/**/*.tsx", "app/**/*.ts", "app/**/*.jsx", "components/**/*.tsx", "components/**/*.ts", "components/**/*.jsx"],
+    "testIdAttributes": ["data-testid", "testID"],
+    "interactive": { "handlerProps": ["onContactSelected"] },
+    "routes": { "strategy": "expo-router", "appDir": "app" }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "$comment": [
+    "Open questions carried into the Evidence Index (C2) for a human to decide. Read by evidence:index only.",
+    "match.texts: exact L texts; match.record_screen_query_id: true links frames whose route carries a",
+    "record id in its query string. Resolve an item with status \"resolved\" and a written resolution."
+  ],
+  "items": []
+}

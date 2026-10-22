@@ -1,0 +1,63 @@
+{
+  "$comment": [
+    "module -> { flows it owns, source paths in UniqBrio/UniqBrio-Mobile-App that can affect it }.",
+    "Written from the real Expo Router tree on 2026-10-22 (the legacy map in UniqBrio_App_Screenshot_Capture",
+    "named folders that do not exist). Used by the capture skip filter and to group coverage findings."
+  ],
+  "_global": {
+    "flows": [],
+    "source_paths": [
+      "app/_layout.tsx", "app/(tabs)/_layout*.tsx", "app/(tabs)/(home)/_layout.tsx",
+      "components/FloatingTabBar.tsx", "components/MainTabsRow.tsx", "components/ScrollingPillRow.tsx",
+      "components/PortalModal.tsx", "components/UniqSheet.tsx", "components/button.tsx", "components/ListItem.tsx",
+      "components/SessionExpiredScreen.tsx", "components/SubscriptionBlockedScreen.tsx",
+      "constants/**", "contexts/**", "hooks/**", "lib/**", "utils/**", "services/**", "styles/**",
+      "app.json", "package.json", "vercel.json"
+    ]
+  },
+  "signin": {
+    "flows": [],
+    "source_paths": [
+      "app/login.tsx", "app/staff-login.tsx", "app/staff-set-pin.tsx", "app/staff-no-access.tsx",
+      "app/business-registration.tsx", "app/welcome-aboard.tsx",
+      "components/CodeInput.tsx", "components/CountryCodeSelector.tsx", "components/AuthAtmosphere.tsx", "components/SetupJourney/**"
+    ]
+  },
+  "home": {
+    "flows": [],
+    "source_paths": [
+      "app/(tabs)/(home)/index*.tsx", "app/(tabs)/(home)/home-dashboard.tsx", "app/(tabs)/(home)/add-class-modal.tsx",
+      "app/(tabs)/(home)/attendance-modal.tsx", "app/(tabs)/(home)/notifications.tsx", "app/(tabs)/(home)/schedules.tsx",
+      "components/DashboardHeader.tsx", "components/AttendanceOverrideSheet.tsx", "components/OverdueDropRiskModal.tsx"
+    ]
+  },
+  "manage": {
+    "flows": [],
+    "source_paths": [
+      "app/(tabs)/(home)/manage.tsx", "app/(tabs)/(home)/manage/**",
+      "components/Add*Modal.tsx", "components/Edit*Modal.tsx", "components/Confirm*Modal.tsx", "components/*Notes*Modal.tsx",
+      "components/StudentCard.tsx", "components/SwipeableStudentCard.tsx", "components/StudentEditModal.tsx", "components/CourseCard.tsx",
+      "components/BulkImportModal.tsx", "components/ImportContactButton.jsx",
+      "components/course/**", "components/todos/**", "components/brand-video/**", "components/Task*.tsx"
+    ]
+  },
+  "billing": {
+    "flows": [],
+    "source_paths": ["app/(tabs)/(home)/billing/**", "components/billing/**", "components/payments/**", "components/finance/**"]
+  },
+  "reports": {
+    "flows": [],
+    "source_paths": ["app/(tabs)/(home)/reports/**"]
+  },
+  "settings": {
+    "flows": [],
+    "source_paths": [
+      "app/(tabs)/(home)/settings.tsx", "app/(tabs)/(home)/customize-app.tsx", "app/(tabs)/profile*.tsx",
+      "components/*Section.tsx", "components/StudentId*.tsx", "components/EnquiryId*.tsx"
+    ]
+  },
+  "staff": {
+    "flows": [],
+    "source_paths": ["app/staff-home.tsx", "app/(tabs)/(home)/staff-more.tsx", "components/staff/**", "components/Staff*.tsx"]
+  }
+}

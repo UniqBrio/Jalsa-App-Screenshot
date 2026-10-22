@@ -1,0 +1,48 @@
+# The More tab — the account card and the settings groups. Sign out is never
+# tapped: it ends the session every other flow relies on.
+schema_version: 2
+module: more
+flow: more-menu
+title: More (settings menu)
+description: The More tab reached from the floating pill, showing the account card and every settings row.
+scenario_class: happy
+auth: admin
+audience: academy owner
+settle_ms: 700
+
+depends_on_routes:
+  - /
+  - /more
+
+steps:
+  - id: 010-overview
+    action: goto
+    value: /
+    label: Start on Overview
+    screenshot: false
+    settle_ms: 1200
+    assert:
+      selector_visible: 'role=tab[name="More"]'
+
+  # The floating pill's third item. It is a role="tab" with a name; on the tab
+  # screens it carries no test id (the pill is drawn by the navigator).
+  - id: 020-more-tab
+    action: click
+    selector: 'role=tab[name="More"]'
+    label: More — the account card and the settings groups
+    expect_screen: more
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      url_contains: /more
+      selector_visible: 'role=button[name=/Open your profile/]'
+
+  # The settings gear in the academy header is a second way in; it lands on
+  # the same screen, so it is asserted rather than captured twice.
+  - id: 030-settings-gear
+    action: click
+    selector: '[data-testid="shell-settings"]'
+    label: The settings gear opens the same screen
+    screenshot: false
+    assert:
+      url_contains: /more
