@@ -1,0 +1,58 @@
+# The staff PIN keypad, signed out. One digit is tapped and deleted again so
+# the keypad shows a half-entered PIN; four digits would submit (the fourth
+# IS the submit, PinSignIn.tsx), so no step ever enters more than one. No
+# PIN is typed anywhere in this flow.
+schema_version: 2
+module: staff
+flow: sign-in
+title: Staff — the PIN keypad
+description: The captain's sign-in screen at /staff, a digit entered and deleted, and the way back to the start.
+scenario_class: happy
+auth: none
+audience: a captain or waiter
+settle_ms: 600
+
+depends_on_routes:
+  - /staff
+  - /
+
+steps:
+  - id: 010-keypad
+    action: goto
+    value: /staff
+    label: Staff sign in — the four-digit keypad
+    expect_screen: staff-signin
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="staff-signin"]'
+
+  - id: 020-one-digit
+    action: click
+    selector: '[data-testid="staff-key-1"]'
+    label: One digit in — the first dot fills (never a whole PIN)
+    expect_screen: staff-signin-one-digit
+    screenshot: viewport
+
+  - id: 030-delete
+    action: click
+    selector: '[data-testid="staff-key-back"]'
+    label: Delete it again
+    screenshot: false
+
+  # The real input behind the dots (visually hidden, for hardware keyboards
+  # and password managers). Backspace on it changes nothing and submits
+  # nothing.
+  - id: 040-hidden-input
+    action: press
+    selector: '[data-testid="staff-pin-input"]'
+    value: Backspace
+    label: The hidden PIN field takes the keyboard
+    screenshot: false
+
+  - id: 050-back
+    action: click
+    selector: '[data-testid="staff-signin-home-link"]'
+    label: Back to the start
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="home-staff"]'

@@ -1,0 +1,79 @@
+# The captain's handset: each tab of the bottom bar. Read-only: the advance,
+# done, clear and print buttons on these lists all post to /api/staff/action,
+# and Sign out (on Me) would end the session every staff flow shares — none
+# is pressed. A captain sees KOTs, a waiter sees Clear; the account's role
+# decides which, hence the two optional steps.
+schema_version: 2
+module: staff
+flow: tabs
+title: Staff — the handset tabs
+description: My tables, Ready, KOTs (or Clear), Requests and Me, as the signed-in captain sees them tonight.
+scenario_class: happy
+auth: captain
+audience: a captain or waiter
+settle_ms: 800
+
+depends_on_routes:
+  - /staff
+
+steps:
+  - id: 010-floor
+    action: goto
+    value: /staff
+    label: My tables — the floor, live tables first, then the free ones
+    expect_screen: staff-floor
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="staff-floor"]'
+
+  - id: 020-ready
+    action: click
+    selector: '[data-testid="staff-tab-ready"]'
+    label: Ready — rounds the kitchen has finished
+    expect_screen: staff-ready
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="staff-tabs"]'
+
+  - id: 030-kots
+    action: click
+    selector: '[data-testid="staff-tab-kots"]'
+    label: KOTs — tonight's kitchen tickets, newest first
+    expect_screen: staff-kots
+    screenshot: full
+    optional: true
+    optional_reason: a captain's tab; a waiter's handset has Clear instead
+
+  - id: 040-clear
+    action: click
+    selector: '[data-testid="staff-tab-clean"]'
+    label: Clear — tables the party has left
+    expect_screen: staff-clear
+    screenshot: full
+    optional: true
+    optional_reason: a waiter's tab; a captain's handset has KOTs instead
+
+  - id: 050-requests
+    action: click
+    selector: '[data-testid="staff-tab-requests"]'
+    label: Requests — what the tables have asked for
+    expect_screen: staff-requests
+    screenshot: full
+
+  - id: 060-me
+    action: click
+    selector: '[data-testid="staff-tab-me"]'
+    label: Me — who is signed in, their tables, and what they may do tonight
+    expect_screen: staff-me
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="staff-me"]'
+
+  - id: 070-floor-again
+    action: click
+    selector: '[data-testid="staff-tab-floor"]'
+    label: Back to My tables
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="staff-floor"]'

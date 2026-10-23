@@ -1,0 +1,222 @@
+# One live table on the captain's handset, and everything that opens from
+# it — each opened and then cancelled. Needs the captain to have at least one
+# table with an open bill; on a quiet floor every step after the first is an
+# expected skip.
+#
+# Never pressed: choosing a waiter, Save on a quantity, Cancel item (the
+# confirm), Record payment, Send round, the KOT advance / print / reprint
+# buttons — all post to /api/staff/action — and the "+" on a dish, which
+# starts a round.
+schema_version: 2
+module: staff
+flow: table
+title: Staff — a live table
+description: The first live table — its rounds and totals, the waiter, quantity, cancel-item and close-bill sheets, and Add items.
+scenario_class: happy
+auth: captain
+audience: a captain or waiter
+settle_ms: 800
+
+vars:
+  STAFF_CATEGORY: biryani
+  MENU_SEARCH: biryani
+
+depends_on_routes:
+  - /staff
+
+steps:
+  - id: 010-floor
+    action: goto
+    value: /staff
+    label: My tables
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="staff-floor"]'
+
+  # The first tile under "My tables" — every tile there holds an open bill.
+  - id: 020-table
+    action: click
+    selector: '[data-testid^="staff-table-"]'
+    label: The table — its rounds, where each is, and the bill so far
+    expect_screen: staff-table
+    screenshot: full
+    optional: true
+    optional_reason: needs a table with an open bill on the floor
+    assert:
+      selector_visible: '[data-testid="staff-table"]'
+
+  - id: 030-waiter
+    action: click
+    selector: '[data-testid="staff-assign-waiter"]'
+    label: Assign a waiter — who can take the table (nobody chosen)
+    expect_screen: staff-waiter-sheet
+    screenshot: viewport
+    optional: true
+    optional_reason: only on a bill this captain owns, with the tables.assign grant
+    assert:
+      selector_visible: '[data-testid="staff-waiter-sheet"]'
+
+  - id: 040-waiter-close
+    action: press
+    selector: '[data-testid="staff-waiter-sheet"]'
+    value: Escape
+    label: Close without choosing
+    screenshot: false
+    optional: true
+    optional_reason: only on a bill this captain owns, with the tables.assign grant
+
+  - id: 050-qty
+    action: click
+    selector: '[data-testid^="staff-qty-"]'
+    label: Change a quantity — the sheet (never saved)
+    expect_screen: staff-qty-sheet
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an item this captain may still edit
+    assert:
+      selector_visible: '[data-testid="staff-qty-sheet"]'
+
+  - id: 060-qty-cancel
+    action: click
+    selector: '[data-testid="staff-qty-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs an item this captain may still edit
+
+  - id: 063-qty-again
+    action: click
+    selector: '[data-testid^="staff-qty-"]'
+    label: The quantity sheet again
+    screenshot: false
+    optional: true
+    optional_reason: needs an item this captain may still edit
+    assert:
+      selector_visible: '[data-testid="staff-qty-sheet"]'
+
+  - id: 066-qty-escape
+    action: press
+    selector: '[data-testid="staff-qty-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs an item this captain may still edit
+
+  - id: 070-cancel-item
+    action: click
+    selector: '[data-testid^="staff-cancel-"]'
+    label: Cancel an item — the reasons and the consequence (not confirmed)
+    expect_screen: staff-cancel-sheet
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an item this captain may still edit
+    assert:
+      selector_visible: '[data-testid="staff-cancel-sheet"]'
+
+  # Escape, not "Keep it": staff-cancel-sheet-keep shares its prefix with
+  # the item Cancel buttons, and coverage would credit the wrong control.
+  - id: 080-cancel-item-keep
+    action: press
+    selector: '[data-testid="staff-cancel-sheet"]'
+    value: Escape
+    label: Keep the item
+    screenshot: false
+    optional: true
+    optional_reason: needs an item this captain may still edit
+
+  - id: 090-close-bill
+    action: click
+    selector: '[data-testid="staff-open-close"]'
+    label: Close bill — totals, discount and payment mode (no payment recorded)
+    expect_screen: staff-close-sheet
+    screenshot: full
+    optional: true
+    optional_reason: only for a person with the bill.record_payment grant
+    assert:
+      selector_visible: '[data-testid="staff-close-sheet"]'
+
+  - id: 100-close-bill-cancel
+    action: click
+    selector: '[data-testid="staff-close-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: only for a person with the bill.record_payment grant
+
+  - id: 103-close-bill-again
+    action: click
+    selector: '[data-testid="staff-open-close"]'
+    label: Close bill again
+    screenshot: false
+    optional: true
+    optional_reason: only for a person with the bill.record_payment grant
+    assert:
+      selector_visible: '[data-testid="staff-close-sheet"]'
+
+  - id: 106-close-bill-escape
+    action: press
+    selector: '[data-testid="staff-close-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: only for a person with the bill.record_payment grant
+
+  - id: 110-add-items
+    action: click
+    selector: '[data-testid="staff-add-items"]'
+    label: Add items — a new round on the same bill (nothing added)
+    expect_screen: staff-add-items
+    screenshot: full
+    optional: true
+    optional_reason: needs a dine-in bill and the orders.add grant
+    assert:
+      selector_visible: '[data-testid="staff-menu-search"]'
+
+  - id: 120-add-search
+    action: type
+    selector: '[data-testid="staff-menu-search"]'
+    value: '{{MENU_SEARCH}}'
+    run_tag: false
+    label: Searching the menu from the handset
+    expect_screen: staff-add-search
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a dine-in bill and the orders.add grant
+
+  - id: 130-add-search-clear
+    action: click
+    selector: '[data-testid="staff-menu-search-clear"]'
+    label: Clear the search
+    screenshot: false
+    optional: true
+    optional_reason: needs a dine-in bill and the orders.add grant
+
+  - id: 140-add-category
+    action: click
+    selector: '[data-testid="staff-cat-{{STAFF_CATEGORY}}"]'
+    label: One category
+    expect_screen: staff-add-category
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a dine-in bill, and STAFF_CATEGORY on tonight's menu
+
+  - id: 150-back-to-table
+    action: click
+    selector: '[data-testid="staff-back"]'
+    label: Back to the table
+    screenshot: false
+    optional: true
+    optional_reason: needs a dine-in bill and the orders.add grant
+
+  - id: 160-back-to-floor
+    action: click
+    selector: '[data-testid="staff-back"]'
+    label: Back to My tables
+    screenshot: false
+    optional: true
+    optional_reason: needs a table with an open bill on the floor
+    assert:
+      selector_visible: '[data-testid="staff-floor"]'

@@ -1,0 +1,61 @@
+# The Ready and KOTs lists are a way into a table: "Open" on a round goes to
+# its table. Only that is pressed — the advance (Picked up / Served), Print
+# KOT and Reprint buttons beside it post to /api/staff/action.
+schema_version: 2
+module: staff
+flow: lists
+title: Staff — from a round to its table
+description: Open a table from a ready round and from a kitchen ticket.
+scenario_class: happy
+auth: captain
+audience: a captain or waiter
+settle_ms: 800
+
+depends_on_routes:
+  - /staff
+
+steps:
+  - id: 010-floor
+    action: goto
+    value: /staff
+    label: My tables
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="staff-tabs"]'
+
+  - id: 020-ready
+    action: click
+    selector: '[data-testid="staff-tab-ready"]'
+    label: Ready
+    screenshot: false
+
+  - id: 030-ready-open
+    action: click
+    selector: '[data-testid^="staff-ready-open-"]'
+    label: A ready round's table
+    expect_screen: staff-table-from-ready
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a round the kitchen has marked ready
+    assert:
+      selector_visible: '[data-testid="staff-table"]'
+
+  - id: 040-kots
+    action: click
+    selector: '[data-testid="staff-tab-kots"]'
+    label: KOTs
+    screenshot: false
+    optional: true
+    optional_reason: a captain's tab; a waiter's handset has none
+
+  - id: 050-kot-open
+    action: click
+    selector: '[data-testid^="staff-kot-open-"]'
+    label: A kitchen ticket's table
+    expect_screen: staff-table-from-kot
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a kitchen ticket tonight, on a captain's handset
+    assert:
+      selector_visible: '[data-testid="staff-table"]'

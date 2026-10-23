@@ -1,0 +1,134 @@
+# The actions under a table on the captain's floor, each opened and closed
+# without confirming: Mark free, Cancel order and Move table, plus a free
+# table's "start a round" menu. Which of them a captain sees depends on the
+# grants the owner gave and on what each table holds, so every step after
+# the first is optional.
+#
+# Never pressed: the confirm buttons (free-table, cancel-order, move-table
+# all post to /api/staff/action), the "+" on a dish and Send round.
+schema_version: 2
+module: staff
+flow: floor-actions
+title: Staff — floor actions
+description: Mark free, Cancel order and Move table opened and closed on the floor, and the new-round menu of a free table.
+scenario_class: happy
+auth: captain
+audience: a captain or waiter
+settle_ms: 800
+
+depends_on_routes:
+  - /staff
+
+steps:
+  - id: 010-floor
+    action: goto
+    value: /staff
+    label: My tables
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="staff-floor"]'
+
+  - id: 020-free
+    action: click
+    selector: '[data-testid^="staff-free-table-"]'
+    label: Mark free — what freeing this table would do (not confirmed)
+    expect_screen: staff-free-table-sheet
+    screenshot: viewport
+    optional: true
+    optional_reason: needs the tables.free grant and a table holding no rounds
+    assert:
+      selector_visible: '[data-testid="staff-free-table-sheet"]'
+
+  - id: 030-free-cancel
+    action: click
+    selector: '[data-testid="staff-free-table-cancel"]'
+    label: Keep the table
+    screenshot: false
+    optional: true
+    optional_reason: needs the tables.free grant and a table holding no rounds
+
+  - id: 033-free-again
+    action: click
+    selector: '[data-testid^="staff-free-table-"]'
+    label: Mark free again
+    screenshot: false
+    optional: true
+    optional_reason: needs the tables.free grant and a table holding no rounds
+    assert:
+      selector_visible: '[data-testid="staff-free-table-sheet"]'
+
+  - id: 036-free-escape
+    action: press
+    selector: '[data-testid="staff-free-table-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs the tables.free grant and a table holding no rounds
+
+  - id: 040-cancel-order
+    action: click
+    selector: '[data-testid^="staff-cancel-order-"]'
+    label: Cancel order — the reasons, and the table freed with it (not confirmed)
+    expect_screen: staff-cancel-order
+    screenshot: viewport
+    optional: true
+    optional_reason: needs the cancel grants and a table with rounds sent
+    assert:
+      selector_visible: '[data-testid="staff-cancel-order"]'
+
+  # Escape, not "Keep it": staff-cancel-order-keep shares its prefix with the
+  # floor buttons above, and coverage would credit the wrong control.
+  - id: 050-cancel-order-close
+    action: press
+    selector: '[data-testid="staff-cancel-order"]'
+    value: Escape
+    label: Keep the order
+    screenshot: false
+    optional: true
+    optional_reason: needs the cancel grants and a table with rounds sent
+
+  - id: 060-move
+    action: click
+    selector: '[data-testid^="staff-move-table-"]'
+    label: Move table — the free tables it could go to (none chosen)
+    expect_screen: staff-move-table
+    screenshot: viewport
+    optional: true
+    optional_reason: needs the tables.transfer grant and a table holding an order
+    assert:
+      selector_visible: '[data-testid="staff-move-table"]'
+
+  - id: 070-move-close
+    action: press
+    selector: '[data-testid="staff-move-table"]'
+    value: Escape
+    label: Stay where they are
+    screenshot: false
+    optional: true
+    optional_reason: needs the tables.transfer grant and a table holding an order
+
+  # "Free right now": a tap opens the menu for a walk-in. If a "Mark free"
+  # button is earlier on the page this selector lands on it instead, so the
+  # step is optional and the next one closes whatever opened.
+  - id: 080-free-table-menu
+    action: click
+    selector: '[data-testid^="staff-free-"]'
+    label: A free table — the menu for its first round (nothing added)
+    expect_screen: staff-new-round
+    screenshot: full
+    optional: true
+    optional_reason: needs a free table, and no Mark free button earlier on the floor
+    assert:
+      selector_visible: '[data-testid="staff-menu-search"]'
+
+  - id: 090-back
+    action: click
+    selector: '[data-testid="staff-back"]'
+    label: Back to My tables
+    screenshot: false
+    optional: true
+    optional_reason: needs a free table, and no Mark free button earlier on the floor
+    assert:
+      selector_visible: '[data-testid="staff-floor"]'
