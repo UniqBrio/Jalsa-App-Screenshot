@@ -24,9 +24,9 @@ Local clone paths are per machine and not committed: set
 
 - Profile written from the source: the PIN keypad (`staff-pin-input`,
   `staff-key-{digit}`), the signed-in markers `owner-console` / `staff-app`,
-  and `staff-choose-pin` for a provisional PIN. `baseUrl` is
-  `http://localhost:3000`: production is not provisioned
-  (`jalsa/docs/registers/ENVIRONMENTS.md`).
+  and `staff-choose-pin` for a provisional PIN. `baseUrl` is the Vercel
+  deployment `https://jalsa-restaurant-phi.vercel.app`; `APP_URL=http://localhost:3000`
+  in `apps/jalsa/.env` captures a local `npm run dev` instead.
 - `routes.map.json` was written from the real tree: `home`, `guest`, `staff`,
   `owner`, plus `_global` for `components/`, `lib/`, `theme/`.
 - **To capture:** the seeded PIN `1234` is provisional and only opens *choose
