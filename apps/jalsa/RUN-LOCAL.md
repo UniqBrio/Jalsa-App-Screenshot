@@ -11,6 +11,12 @@ How to run the 30 Jalsa flows on your own machine, against Jalsa running locally
 > The development database is the one that will become production
 > (`jalsa/docs/registers/ENVIRONMENTS.md`).
 
+> **PowerShell: type `npm.cmd`, not `npm`, whenever a command has `-- --flags`.**
+> PowerShell's `npm` wrapper swallows the `--`, so npm eats `--app`, `--device`,
+> `--flow` and `--headed` and the engine stops with "No app selected".
+> `npm.cmd run validate -- --app jalsa` passes them through. (Or set `APP=jalsa` in the
+> root `.env` and drop `--app`; the other flags still need `npm.cmd`.)
+
 ---
 
 ## 1. Prerequisites (once)
@@ -48,12 +54,15 @@ npm run typecheck
 Copy-Item .env.example .env
 ```
 
-In `.env`, raise the step timeout. The Next.js dev server compiles each page the first time
+In `.env`, set the app and raise the step timeout. The Next.js dev server compiles each page the first time
 it is opened, which can take longer than 15 seconds:
 
 ```
+APP=jalsa
 STEP_TIMEOUT_MS=30000
 ```
+
+The file must be named exactly `.env` (Notepad may save it as `.env.txt`; check with `Get-ChildItem -Force .env*`).
 
 **Jalsa credentials and values**: `apps\jalsa\.env`. This is the only place credentials are read
 from, and git ignores it. Never commit it, and never paste a PIN anywhere else.
@@ -99,29 +108,29 @@ Back in the first terminal (`C:\code\Jalsa-App-Screenshot`):
 
 ```powershell
 # 1. Offline checks: profile, every flow, selectors, read-only rules, host gate. Must end "All manifests valid".
-npm run validate -- --app jalsa
+npm.cmd run validate -- --app jalsa
 
 # 2. Coverage, static (reads the app clone; no browser).
-npm run coverage -- --app jalsa
+npm.cmd run coverage -- --app jalsa
 #    Today this FAILS on exactly 7 new print ids, until you approve the exceptions in
 #    apps\jalsa\EXCEPTIONS-PROPOSED.md (§1 there). Everything else passes.
 
 # 3. Plan only: which flows run on which device. No browser, no network.
-npm run capture:dry -- --app jalsa --all-devices
+npm.cmd run capture:dry -- --app jalsa --all-devices
 
 # 4. One flow, watched, to prove sign-in and the selectors on your machine.
-npm run capture -- --app jalsa --device Laptop --flow owner/dashboard --headed
+npm.cmd run capture -- --app jalsa --device Laptop --flow owner/dashboard --headed
 
 # 5. The real run, every flow, every device.
-npm run capture:all -- --app jalsa --all-devices
+npm.cmd run capture:all -- --app jalsa --all-devices
 ```
 
 Smaller runs, for fixing one area:
 
 ```powershell
-npm run capture -- --app jalsa --module owner --device Laptop --headed
-npm run capture -- --app jalsa --module guest --device Mobile
-npm run capture -- --app jalsa --flow staff/table --device Mobile --headed
+npm.cmd run capture -- --app jalsa --module owner --device Laptop --headed
+npm.cmd run capture -- --app jalsa --module guest --device Mobile
+npm.cmd run capture -- --app jalsa --flow staff/table --device Mobile --headed
 ```
 
 Guest flows are limited to Mobile (each guest visit creates a `guest_session` row), so
@@ -136,7 +145,7 @@ you to set things up:
 | Flow | Needs | How |
 |---|---|---|
 | `guest/welcome`, `guest/menu`, `guest/help-sheets` | `GUEST_TABLE` free, in service, and the queue open (a closed queue shows "not taking new orders" instead of the welcome) | the normal run |
-| `guest/order-in-progress` | `GUEST_TABLE` holding an **open bill with a round sent**; the last half needs the table to have **asked for the bill** | set `GUEST_TABLE` in `apps\jalsa\.env` to such a table, then run `npm run capture -- --app jalsa --flow guest/order-in-progress --device Mobile`, then set it back. The visit attaches this browser's guest session to that party's bill |
+| `guest/order-in-progress` | `GUEST_TABLE` holding an **open bill with a round sent**; the last half needs the table to have **asked for the bill** | set `GUEST_TABLE` in `apps\jalsa\.env` to such a table, then run `npm.cmd run capture -- --app jalsa --flow guest/order-in-progress --device Mobile`, then set it back. The visit attaches this browser's guest session to that party's bill |
 | `guest/paid-receipt` | `GUEST_TABLE` **paid within the re-scan window** | the same, with a table that has just paid |
 | `staff/*` | `CAPTAIN_PIN` set; for `staff/table` the captain must own a table with an open bill | otherwise skipped (no PIN) or expected skips |
 
@@ -164,7 +173,7 @@ fingerprint baseline (every step `new`).
    `✗ [owner/menu] step 070-edit-item (click) selector=[data-testid^="owner-edit-"] …`.
 2. **Look at `<step-id>.failed.png`** and the flow's `flow-run.json` in the run folder.
 3. **Re-run that one flow headed** and watch it:
-   `npm run capture -- --app jalsa --flow owner/menu --device Laptop --headed`
+   `npm.cmd run capture -- --app jalsa --flow owner/menu --device Laptop --headed`
 4. Decide which case it is:
    - **The data is not there tonight** (no open bill, no printer, no suggestion…): if the step is
      already `optional`, it is an expected skip and not a failure. If a step that should be
@@ -176,21 +185,21 @@ fingerprint baseline (every step `new`).
      still provisional (step 1.6).
    - **Selector not found** (and the screen is right): the app renamed a test id. Search the app
      for the old id (`jalsa\src`), fix the selector in `apps\jalsa\flows\`, then run
-     `npm run validate -- --app jalsa` and `npm run coverage -- --app jalsa`. Coverage reports a
+     `npm.cmd run validate -- --app jalsa` and `npm.cmd run coverage -- --app jalsa`. Coverage reports a
      renamed id as a STALE reference.
 5. **Never** fix a failure by pressing a Save / Send / Confirm button, by switching on writes, or
    by accepting the baseline. Accept the visual baseline only after you have looked at the
-   screenshots: `npm run baseline:accept -- --app jalsa` (your call, after review).
+   screenshots: `npm.cmd run baseline:accept -- --app jalsa` (your call, after review).
 
 After a full run, coverage can count what the browser really pressed instead of trusting the manifests:
 
 ```powershell
-npm run coverage -- --app jalsa --evidence
+npm.cmd run coverage -- --app jalsa --evidence
 ```
 
 ## 9. Housekeeping
 
 ```powershell
-npm run prune -- --app jalsa     # drop runs older than 30 days
+npm.cmd run prune -- --app jalsa     # drop runs older than 30 days
 git status                       # apps\jalsa\.env, .auth\, runs\ and fingerprints\ must never appear here
 ```
