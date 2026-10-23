@@ -1,0 +1,63 @@
+# /q, the code on the door. Read-only: the party-size chips and "Join" write
+# a waitlist entry, so they are never pressed. The page reads the queue and
+# this browser's cookie and writes nothing (src/app/q/page.tsx).
+schema_version: 2
+module: home
+flow: queue
+title: The door code — join the queue
+description: The waitlist page a party opens at the door, as the queue stands tonight.
+scenario_class: happy
+auth: none
+audience: a guest at the door
+settle_ms: 700
+
+depends_on_routes:
+  - /q
+
+steps:
+  - id: 010-queue
+    action: goto
+    value: /q
+    label: The door code
+    screenshot: false
+    settle_ms: 1200
+
+  # Which of the two shows is the owner's switch (Settings › Tables & QR).
+  - id: 020-join-form
+    action: waitFor
+    selector: '[data-testid="guest-queue-join"]'
+    label: The door code — the wait right now, and how to join
+    expect_screen: queue-join
+    screenshot: full
+    optional: true
+    optional_reason: only while the owner has the queue open
+
+  - id: 025-closed
+    action: waitFor
+    selector: '[data-testid="guest-queue-closed"]'
+    label: The door code — the queue is closed tonight
+    expect_screen: queue-closed
+    screenshot: full
+    optional: true
+    optional_reason: only while the owner has closed the queue
+
+  # The opening-hours block exists only on the "queue closed" screen
+  # (GuestQueue.tsx, HoursBlock).
+  - id: 030-hours
+    action: click
+    selector: '[data-testid="guest-queue-hours"]'
+    label: Queue closed — the opening hours, expanded
+    expect_screen: queue-closed-hours
+    screenshot: full
+    optional: true
+    optional_reason: only while the owner has closed the queue
+    assert:
+      selector_visible: '[data-testid="guest-queue-hours-sheet"]'
+
+  - id: 040-hours-close
+    action: click
+    selector: '[data-testid="guest-queue-hours"]'
+    label: Fold the hours away
+    screenshot: false
+    optional: true
+    optional_reason: only while the owner has closed the queue

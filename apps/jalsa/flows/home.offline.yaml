@@ -1,0 +1,35 @@
+# The page the service worker serves when a navigation cannot reach the
+# server. The capture runs online, so it is opened directly: it is a plain
+# route (src/app/offline/page.tsx) and renders the same either way.
+schema_version: 2
+module: home
+flow: offline
+title: No signal
+description: The offline page a guest sees when the network drops, and its Try again link.
+scenario_class: offline
+auth: none
+audience: a guest at a table
+settle_ms: 600
+
+depends_on_routes:
+  - /offline
+  - /
+
+steps:
+  - id: 010-offline
+    action: goto
+    value: /offline
+    label: No signal right now — what the service worker shows offline
+    expect_screen: offline
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="offline-page"]'
+
+  - id: 020-try-again
+    action: click
+    selector: '[data-testid="offline-retry"]'
+    label: Try again — a real navigation back to the start
+    expect_screen: home
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="home-staff"]'

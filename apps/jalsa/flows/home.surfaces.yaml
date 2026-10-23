@@ -1,0 +1,80 @@
+# The root page and its three ways in. Signed out, so the staff and owner
+# links land on the PIN keypad; no PIN is ever typed here.
+#
+# The guest link is hard-wired to /t/A5 in the app (src/app/page.tsx). Opening
+# a table page creates a guest_session row for this browser (resolveGuest in
+# src/lib/db/guest.ts), the same as every guest flow. It is the last step, so
+# a reviewer can drop it without touching the rest.
+schema_version: 2
+module: home
+flow: surfaces
+title: Home — the three surfaces
+description: The root page, then each of its links (captain, owner, guest) from a signed-out browser.
+scenario_class: happy
+auth: none
+audience: a restaurant owner or captain
+settle_ms: 700
+
+depends_on_routes:
+  - /
+  - /staff
+  - /owner
+  - /t/[table]
+
+steps:
+  - id: 010-home
+    action: goto
+    value: /
+    label: The root page — one link per surface
+    expect_screen: home
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="home-owner"]'
+
+  - id: 020-staff-link
+    action: click
+    selector: '[data-testid="home-staff"]'
+    label: Captain and waiter — the staff PIN keypad
+    expect_screen: staff-signin
+    screenshot: viewport
+    assert:
+      url_contains: /staff
+      selector_visible: '[data-testid="staff-signin"]'
+
+  - id: 030-home-again
+    action: goto
+    value: /
+    label: Back to the root page
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="home-owner"]'
+
+  - id: 040-owner-link
+    action: click
+    selector: '[data-testid="home-owner"]'
+    label: Owner and admin — the same PIN keypad, for the console
+    expect_screen: owner-signin
+    screenshot: viewport
+    assert:
+      url_contains: /owner
+      selector_visible: '[data-testid="staff-signin"]'
+
+  - id: 050-home-again
+    action: goto
+    value: /
+    label: Back to the root page
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="home-guest"]'
+
+  # Table A5 may be free, seated, paid or out of service; whichever it is, the
+  # guest surface answers at /t/A5.
+  - id: 060-guest-link
+    action: click
+    selector: '[data-testid="home-guest"]'
+    label: Guest — what a phone sees after scanning table A5
+    expect_screen: guest-table-a5
+    screenshot: viewport
+    settle_ms: 1500
+    assert:
+      url_contains: /t/
