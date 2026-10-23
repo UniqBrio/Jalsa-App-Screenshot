@@ -73,7 +73,7 @@ steps:
     expect_screen: staff-qty-sheet
     screenshot: viewport
     optional: true
-    optional_reason: needs an item this captain may still edit
+    optional_reason: needs an item still on the bill, and the orders.qty_change grant
     assert:
       selector_visible: '[data-testid="staff-qty-sheet"]'
 
@@ -83,7 +83,7 @@ steps:
     label: Cancel
     screenshot: false
     optional: true
-    optional_reason: needs an item this captain may still edit
+    optional_reason: needs an item still on the bill, and the orders.qty_change grant
 
   - id: 063-qty-again
     action: click
@@ -91,7 +91,7 @@ steps:
     label: The quantity sheet again
     screenshot: false
     optional: true
-    optional_reason: needs an item this captain may still edit
+    optional_reason: needs an item still on the bill, and the orders.qty_change grant
     assert:
       selector_visible: '[data-testid="staff-qty-sheet"]'
 
@@ -102,7 +102,7 @@ steps:
     label: Close it with Escape
     screenshot: false
     optional: true
-    optional_reason: needs an item this captain may still edit
+    optional_reason: needs an item still on the bill, and the orders.qty_change grant
 
   - id: 070-cancel-item
     action: click
@@ -111,7 +111,7 @@ steps:
     expect_screen: staff-cancel-sheet
     screenshot: viewport
     optional: true
-    optional_reason: needs an item this captain may still edit
+    optional_reason: needs an item still on the bill, and the orders.qty_change grant
     assert:
       selector_visible: '[data-testid="staff-cancel-sheet"]'
 
@@ -124,7 +124,7 @@ steps:
     label: Keep the item
     screenshot: false
     optional: true
-    optional_reason: needs an item this captain may still edit
+    optional_reason: needs an item still on the bill, and the orders.qty_change grant
 
   - id: 090-close-bill
     action: click
@@ -171,7 +171,7 @@ steps:
     expect_screen: staff-add-items
     screenshot: full
     optional: true
-    optional_reason: needs a dine-in bill and the orders.add grant
+    optional_reason: needs a dine-in bill and the orders.add_items grant
     assert:
       selector_visible: '[data-testid="staff-menu-search"]'
 
@@ -184,7 +184,7 @@ steps:
     expect_screen: staff-add-search
     screenshot: viewport
     optional: true
-    optional_reason: needs a dine-in bill and the orders.add grant
+    optional_reason: needs a dine-in bill and the orders.add_items grant
 
   - id: 130-add-search-clear
     action: click
@@ -192,7 +192,7 @@ steps:
     label: Clear the search
     screenshot: false
     optional: true
-    optional_reason: needs a dine-in bill and the orders.add grant
+    optional_reason: needs a dine-in bill and the orders.add_items grant
 
   - id: 140-add-category
     action: click
@@ -201,7 +201,7 @@ steps:
     expect_screen: staff-add-category
     screenshot: viewport
     optional: true
-    optional_reason: needs a dine-in bill, and STAFF_CATEGORY on tonight's menu
+    optional_reason: needs a dine-in bill, the orders.add_items grant and STAFF_CATEGORY on tonight’s menu
 
   - id: 150-back-to-table
     action: click
@@ -209,7 +209,7 @@ steps:
     label: Back to the table
     screenshot: false
     optional: true
-    optional_reason: needs a dine-in bill and the orders.add grant
+    optional_reason: needs a dine-in bill and the orders.add_items grant
 
   - id: 160-back-to-floor
     action: click
