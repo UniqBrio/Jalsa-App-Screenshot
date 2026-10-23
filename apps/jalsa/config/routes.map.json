@@ -21,19 +21,19 @@
     ]
   },
   "home": {
-    "flows": [],
+    "flows": ["surfaces", "offline", "queue"],
     "source_paths": ["jalsa/src/app/page.tsx", "jalsa/src/app/offline/**", "jalsa/src/app/q/**"]
   },
   "guest": {
-    "flows": [],
+    "flows": ["welcome", "menu", "help-sheets", "order-in-progress", "paid-receipt", "table-states"],
     "source_paths": ["jalsa/src/app/t/**", "jalsa/src/features/guest/**", "jalsa/src/app/api/guest/**", "jalsa/src/app/api/media/**"]
   },
   "staff": {
-    "flows": [],
+    "flows": ["sign-in", "tabs", "table", "floor-actions", "lists"],
     "source_paths": ["jalsa/src/app/staff/**", "jalsa/src/features/staff/**", "jalsa/src/app/api/staff/**"]
   },
   "owner": {
-    "flows": [],
+    "flows": ["sign-in", "dashboard", "dashboard-floor", "live-orders", "payments", "menu", "printers", "print-setup", "staff", "staff-paperwork", "ledgers", "day-and-queue", "reports", "settings", "settings-tables", "audit-uplift"],
     "source_paths": ["jalsa/src/app/owner/**", "jalsa/src/features/owner/**", "jalsa/src/app/api/owner/**", "jalsa/src/app/api/bridge/**", "jalsa/bridge/**"]
   }
 }
