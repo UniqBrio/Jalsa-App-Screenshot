@@ -1,0 +1,174 @@
+# Tips, and Income & expenses. Ranges, the "all entries" switch and the
+# searches are views; the expense form and the delete confirmation are
+# opened and closed.
+#
+# Never pressed: Settle (tips), Save on an expense, the Delete confirm.
+# Nothing is typed into the expense form.
+schema_version: 2
+module: owner
+flow: ledgers
+title: Owner — tips, income and expenses
+description: Tonight's tips and the tip ledger; income, expenses and net over a range; the expense form and delete confirmation opened and closed.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 900
+
+vars:
+  LEDGER_SEARCH: a
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-tips
+    action: click
+    selector: '[data-testid="owner-nav-tips"]'
+    label: Tips — today, unsettled per person, and the ledger
+    expect_screen: owner-tips
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-tips"]'
+
+  - id: 030-tips-search
+    action: type
+    selector: '[data-testid="owner-tips-table-search"]'
+    value: '{{LEDGER_SEARCH}}'
+    run_tag: false
+    label: Searching the tip ledger
+    expect_screen: owner-tips-search
+    screenshot: viewport
+
+  - id: 040-expenses
+    action: click
+    selector: '[data-testid="owner-nav-expenses"]'
+    label: Income & expenses — today
+    expect_screen: owner-expenses
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-expenses"]'
+
+  - id: 050-range-last30
+    action: click
+    selector: '[data-testid="owner-finance-preset-last30"]'
+    label: The last 30 days
+    expect_screen: owner-expenses-last30
+    screenshot: full
+    settle_ms: 1500
+
+  - id: 060-all-entries
+    action: click
+    selector: '[data-testid="owner-expenses-all"]'
+    label: Every entry, not only this range
+    expect_screen: owner-expenses-all
+    screenshot: viewport
+
+  - id: 070-all-entries-off
+    action: click
+    selector: '[data-testid="owner-expenses-all"]'
+    label: Back to the range
+    screenshot: false
+
+  - id: 080-expenses-search
+    action: type
+    selector: '[data-testid="owner-expenses-table-search"]'
+    value: '{{LEDGER_SEARCH}}'
+    run_tag: false
+    label: Searching the expenses
+    expect_screen: owner-expenses-search
+    screenshot: viewport
+
+  - id: 090-add-expense
+    action: click
+    selector: '[data-testid="owner-add-expense"]'
+    label: Add an expense — the form (never saved)
+    expect_screen: owner-expense-new
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-expense-sheet"]'
+
+  - id: 100-expense-category
+    action: click
+    selector: '[data-testid="owner-expense-category"]'
+    label: The category picker, open
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-expense-category-list"]'
+
+  - id: 110-expense-category-close
+    action: press
+    selector: '[data-testid="owner-expense-category"]'
+    value: Escape
+    label: Close the picker without choosing
+    screenshot: false
+
+  - id: 120-expense-cancel
+    action: click
+    selector: '[data-testid="owner-expense-cancel"]'
+    label: Cancel
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-expense-sheet"]'
+
+  - id: 130-add-again
+    action: click
+    selector: '[data-testid="owner-add-expense"]'
+    label: Add an expense again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-expense-sheet"]'
+
+  - id: 140-add-escape
+    action: press
+    selector: '[data-testid="owner-expense-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+
+  - id: 150-edit-expense
+    action: click
+    selector: '[data-testid^="owner-edit-expense-"]'
+    label: Edit an expense — the form, filled in (never saved)
+    expect_screen: owner-expense-edit
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an expense in the range shown
+    assert:
+      selector_visible: '[data-testid="owner-expense-sheet"]'
+
+  - id: 160-edit-expense-close
+    action: press
+    selector: '[data-testid="owner-expense-sheet"]'
+    value: Escape
+    label: Close without saving
+    screenshot: false
+    optional: true
+    optional_reason: needs an expense in the range shown
+
+  - id: 170-delete-expense
+    action: click
+    selector: '[data-testid^="owner-delete-expense-"]'
+    label: Delete an expense — the reasons (not confirmed)
+    expect_screen: owner-expense-delete
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an expense in the range shown
+    assert:
+      selector_visible: '[data-testid="owner-expense-delete"]'
+
+  - id: 180-delete-expense-keep
+    action: click
+    selector: '[data-testid="owner-expense-delete-keep"]'
+    label: Keep it
+    screenshot: false
+    optional: true
+    optional_reason: needs an expense in the range shown

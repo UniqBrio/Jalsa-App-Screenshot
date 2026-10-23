@@ -1,0 +1,180 @@
+# Staff: the team list, search and the "has the app" tabs, and the forms
+# behind a person — each opened and closed.
+#
+# Never pressed: In today / Out today (marks attendance), Reissue PIN / Give
+# them the app (issues a PIN), Save on a person or on permissions, the
+# permission presets and tick boxes (they edit the permissions being
+# saved), and the Remove confirm. Nothing is typed into a person's form.
+schema_version: 2
+module: owner
+flow: staff
+title: Owner — staff
+description: The team, searched and split by who can sign in; the add, edit, permissions and remove sheets opened and closed.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+vars:
+  STAFF_SEARCH: a
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-staff
+    action: click
+    selector: '[data-testid="owner-nav-staff"]'
+    label: Staff — who is in today and who is not
+    expect_screen: owner-staff
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-staff"]'
+
+  - id: 030-tab-none
+    action: click
+    selector: '[data-testid="owner-staff-tab-none"]'
+    label: People who cannot sign in yet
+    expect_screen: owner-staff-no-app
+    screenshot: full
+
+  - id: 040-tab-has
+    action: click
+    selector: '[data-testid="owner-staff-tab-has"]'
+    label: Back to the people who can sign in
+    screenshot: false
+
+  - id: 050-search
+    action: type
+    selector: '[data-testid="owner-staff-search"]'
+    value: '{{STAFF_SEARCH}}'
+    run_tag: false
+    label: Searching the team
+    expect_screen: owner-staff-search
+    screenshot: viewport
+
+  - id: 060-search-clear
+    action: click
+    selector: '[data-testid="owner-staff-search-clear"]'
+    label: Clear the search
+    screenshot: false
+
+  - id: 070-add
+    action: click
+    selector: '[data-testid="owner-add-staff"]'
+    label: Add a person — the form (never saved)
+    expect_screen: owner-staff-new
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-staff-sheet"]'
+
+  - id: 080-add-cancel
+    action: click
+    selector: '[data-testid="owner-staff-cancel"]'
+    label: Cancel
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-staff-sheet"]'
+
+  - id: 090-add-again
+    action: click
+    selector: '[data-testid="owner-add-staff"]'
+    label: Add a person again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-staff-sheet"]'
+
+  - id: 100-add-escape
+    action: press
+    selector: '[data-testid="owner-staff-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+
+  - id: 110-edit
+    action: click
+    selector: '[data-testid^="owner-edit-staff-"]'
+    label: Edit a person — name, role and mobile (never saved)
+    expect_screen: owner-staff-edit
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a person on the team, and the staff.create grant
+    assert:
+      selector_visible: '[data-testid="owner-staff-sheet"]'
+
+  - id: 120-edit-cancel
+    action: click
+    selector: '[data-testid="owner-staff-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.create grant
+
+  - id: 130-perms
+    action: click
+    selector: '[data-testid^="owner-perms-"]'
+    label: Permissions — what this person may do (nothing changed)
+    expect_screen: owner-perms
+    screenshot: full
+    optional: true
+    optional_reason: needs a person on the team, and the staff.perms grant
+    assert:
+      selector_visible: '[data-testid="owner-perms-sheet"]'
+
+  - id: 140-perms-cancel
+    action: click
+    selector: '[data-testid="owner-perms-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.perms grant
+
+  - id: 150-perms-again
+    action: click
+    selector: '[data-testid^="owner-perms-"]'
+    label: Permissions again
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.perms grant
+    assert:
+      selector_visible: '[data-testid="owner-perms-sheet"]'
+
+  - id: 160-perms-escape
+    action: press
+    selector: '[data-testid="owner-perms-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.perms grant
+
+  # Escape rather than "Keep": owner-remove-dialog-keep shares its prefix
+  # with the row buttons, and coverage would credit the wrong control.
+  - id: 170-remove
+    action: click
+    selector: '[data-testid^="owner-remove-"]'
+    label: Remove a person — the reasons and the consequence (not confirmed)
+    expect_screen: owner-staff-remove
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a person on the team, and the staff.create grant
+    assert:
+      selector_visible: '[data-testid="owner-remove-dialog"]'
+
+  - id: 180-remove-close
+    action: press
+    selector: '[data-testid="owner-remove-dialog"]'
+    value: Escape
+    label: Keep them
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.create grant

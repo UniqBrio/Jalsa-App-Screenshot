@@ -1,0 +1,252 @@
+# Printers: the connected printing computers and their printers, and the
+# sheets behind them — each opened and closed.
+#
+# Never pressed: Show the code (issues a pairing code), Download for Windows
+# (a 35 MB file), Test print, Remove, Stop printing, Save on a printer, and
+# the Delete / Disconnect confirms — they print, download or post to
+# /api/owner/action.
+schema_version: 2
+module: owner
+flow: printers
+title: Owner — printers
+description: The printing computers and their printers; the connect, preview, choose-printer, delete and disconnect sheets opened and closed; Manage.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-printers
+    action: click
+    selector: '[data-testid="owner-nav-printers"]'
+    label: Printers — the computers that print, and what each prints
+    expect_screen: owner-printers
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-printers"]'
+
+  # The first-run state offers "Connect Printing Computer"; once one is
+  # connected the button is "Connect another".
+  - id: 030-connect-first
+    action: click
+    selector: '[data-testid="owner-printers-connect"]'
+    label: Connect your printing computer — the steps (no code issued)
+    expect_screen: owner-printers-setup
+    screenshot: full
+    optional: true
+    optional_reason: only before any printing computer is connected
+    assert:
+      selector_visible: '[data-testid="owner-printers-setup"]'
+
+  - id: 040-connect-first-done
+    action: click
+    selector: '[data-testid="owner-printers-setup-done"]'
+    label: Done
+    screenshot: false
+    optional: true
+    optional_reason: only before any printing computer is connected
+
+  - id: 050-connect-another
+    action: click
+    selector: '[data-testid="owner-printers-connect-another"]'
+    label: Connect another computer — the steps (no code issued)
+    expect_screen: owner-printers-setup
+    screenshot: full
+    optional: true
+    optional_reason: only once a printing computer is connected
+    assert:
+      selector_visible: '[data-testid="owner-printers-setup"]'
+
+  - id: 060-connect-another-close
+    action: press
+    selector: '[data-testid="owner-printers-setup"]'
+    value: Escape
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: only once a printing computer is connected
+
+  - id: 070-kind-bill
+    action: click
+    selector: '[data-testid^="owner-printers-kind-bill-"]'
+    label: Which ticket to preview — the bill
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer that prints both tickets and bills
+
+  - id: 080-kind-kot
+    action: click
+    selector: '[data-testid^="owner-printers-kind-kot-"]'
+    label: Which ticket to preview — the kitchen ticket
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer that prints both tickets and bills
+
+  - id: 090-preview
+    action: click
+    selector: '[data-testid^="owner-printers-preview-"]'
+    label: Preview — the ticket as this printer would print it (not printed)
+    expect_screen: owner-printer-preview
+    screenshot: full
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+    assert:
+      selector_visible: '[data-testid="owner-printer-preview"]'
+
+  - id: 100-preview-close
+    action: click
+    selector: '[data-testid="owner-printer-preview-close"]'
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+
+  - id: 110-preview-again
+    action: click
+    selector: '[data-testid^="owner-printers-preview-"]'
+    label: Preview again
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+    assert:
+      selector_visible: '[data-testid="owner-printer-preview"]'
+
+  - id: 120-preview-escape
+    action: press
+    selector: '[data-testid="owner-printer-preview"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+
+  # A Windows printer the computer found, not yet used by Jalsa.
+  - id: 130-select
+    action: click
+    selector: '[data-testid^="owner-printers-select-"]'
+    label: Use a printer the computer found — name, station, paper (never saved)
+    expect_screen: owner-printers-choose
+    screenshot: full
+    optional: true
+    optional_reason: needs a connected computer reporting a printer Jalsa does not use yet
+    assert:
+      selector_visible: '[data-testid="owner-printers-choose"]'
+
+  - id: 140-select-cancel
+    action: click
+    selector: '[data-testid="owner-printers-choose-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs a connected computer reporting a printer Jalsa does not use yet
+
+  # A Windows printer already mapped to a Jalsa printer.
+  - id: 150-change
+    action: click
+    selector: '[data-testid^="owner-printers-change-"]'
+    label: Change what a mapped printer is (never saved)
+    expect_screen: owner-printers-change
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a computer printer already mapped to a Jalsa printer
+    assert:
+      selector_visible: '[data-testid="owner-printers-choose"]'
+
+  - id: 160-target
+    action: click
+    selector: '[data-testid="owner-printers-target"]'
+    label: The "which Jalsa printer" picker, open
+    screenshot: false
+    optional: true
+    optional_reason: needs a computer printer already mapped to a Jalsa printer
+    assert:
+      selector_visible: '[data-testid="owner-printers-target-list"]'
+
+  - id: 170-target-close
+    action: press
+    selector: '[data-testid="owner-printers-target"]'
+    value: Escape
+    label: Close the picker without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs a computer printer already mapped to a Jalsa printer
+
+  - id: 180-change-escape
+    action: press
+    selector: '[data-testid="owner-printers-choose"]'
+    value: Escape
+    label: Close without saving
+    screenshot: false
+    optional: true
+    optional_reason: needs a computer printer already mapped to a Jalsa printer
+
+  # Escape rather than "Keep it": the -keep ids share a prefix with the row
+  # buttons, and coverage would credit the wrong control.
+  - id: 190-delete
+    action: click
+    selector: '[data-testid^="owner-printers-delete-"]'
+    label: Delete a printer — the confirmation (not confirmed)
+    expect_screen: owner-printers-delete
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+    assert:
+      selector_visible: '[data-testid="owner-printers-delete-confirm"]'
+
+  - id: 200-delete-close
+    action: press
+    selector: '[data-testid="owner-printers-delete-confirm"]'
+    value: Escape
+    label: Keep it
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+
+  - id: 210-disconnect
+    action: click
+    selector: '[data-testid^="owner-printers-disconnect-"]'
+    label: Disconnect a computer — the confirmation (not confirmed)
+    expect_screen: owner-printers-disconnect
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a connected printing computer
+    assert:
+      selector_visible: '[data-testid="owner-printers-disconnect-confirm"]'
+
+  - id: 220-disconnect-close
+    action: press
+    selector: '[data-testid="owner-printers-disconnect-confirm"]'
+    value: Escape
+    label: Keep it connected
+    screenshot: false
+    optional: true
+    optional_reason: needs a connected printing computer
+
+  - id: 230-manage
+    action: click
+    selector: '[data-testid="owner-printers-manage"]'
+    label: Manage — the full print setup
+    expect_screen: owner-printers-manage
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-print-setup"]'
+
+  - id: 240-back
+    action: click
+    selector: '[data-testid="owner-printers-back"]'
+    label: Back to Printers
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-printers"]'

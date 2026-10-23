@@ -1,0 +1,315 @@
+# Live orders: the open bills, the filters, one bill in detail, and every
+# sheet behind it opened and closed without saving. Needs open bills tonight;
+# with none, only the empty state and the takeaway sheet are captured.
+#
+# Never pressed: choosing a name in Reassign (moves the bill and its tip),
+# Save on the packaging charge, the confirm of Cancel item and of Detach,
+# Record payment, Print KOT / Reprint — all post to /api/owner/action.
+schema_version: 2
+module: owner
+flow: live-orders
+title: Owner — live orders
+description: The open bills and their filters, a bill in detail, and the reassign, cancel-item, detach, close-bill, packaging and takeaway sheets — opened and cancelled.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-orders
+    action: click
+    selector: '[data-testid="owner-nav-orders"]'
+    label: Live orders
+    screenshot: false
+
+  - id: 030-orders-list
+    action: waitFor
+    selector: '[data-testid="owner-orders"]'
+    label: Live orders — every open bill, and the selected one in full
+    expect_screen: owner-orders
+    screenshot: full
+    optional: true
+    optional_reason: needs at least one open bill
+
+  - id: 040-orders-empty
+    action: waitFor
+    selector: '[data-testid="owner-orders-empty"]'
+    label: Live orders — nothing open yet
+    expect_screen: owner-orders-empty
+    screenshot: viewport
+    optional: true
+    optional_reason: only when no bill is open
+
+  - id: 050-filter-awaiting
+    action: click
+    selector: '[data-testid="owner-orders-filter-payment_requested"]'
+    label: Filter — awaiting closure
+    expect_screen: owner-orders-awaiting
+    screenshot: viewport
+    optional: true
+    optional_reason: needs at least one open bill
+
+  - id: 060-filter-new
+    action: click
+    selector: '[data-testid="owner-orders-filter-new"]'
+    label: Filter — not yet started
+    screenshot: false
+    optional: true
+    optional_reason: needs at least one open bill
+
+  - id: 070-filter-all
+    action: click
+    selector: '[data-testid="owner-orders-filter-all"]'
+    label: Filter — all
+    screenshot: false
+    optional: true
+    optional_reason: needs at least one open bill
+
+  - id: 080-bill
+    action: click
+    selector: '[data-testid^="owner-bill-"]'
+    label: The first bill — its rounds, items, totals and the people on it
+    expect_screen: owner-bill
+    screenshot: full
+    optional: true
+    optional_reason: needs at least one open bill
+
+  - id: 090-reassign-captain
+    action: click
+    selector: '[data-testid="owner-reassign-captain"]'
+    label: Reassign the captain — who may take the bill (nobody chosen)
+    expect_screen: owner-reassign
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an open bill, with the bill.reassign_staff grant
+    assert:
+      selector_visible: '[data-testid="owner-reassign-sheet"]'
+
+  - id: 100-reassign-list
+    action: click
+    selector: '[data-testid="owner-reassign-search"]'
+    label: The list of captains
+    expect_screen: owner-reassign-list
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an open bill, with the bill.reassign_staff grant
+    assert:
+      selector_visible: '[data-testid="owner-reassign-search-list"]'
+
+  - id: 110-reassign-list-close
+    action: press
+    selector: '[data-testid="owner-reassign-search"]'
+    value: Escape
+    label: Close the list without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill, with the bill.reassign_staff grant
+
+  - id: 120-reassign-close
+    action: press
+    selector: '[data-testid="owner-reassign-sheet"]'
+    value: Escape
+    label: Close the sheet
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill, with the bill.reassign_staff grant
+    assert:
+      selector_hidden: '[data-testid="owner-reassign-sheet"]'
+
+  - id: 130-reassign-waiter
+    action: click
+    selector: '[data-testid="owner-reassign-waiter"]'
+    label: Reassign the waiter
+    expect_screen: owner-reassign-waiter
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill, with the bill.reassign_staff grant
+    assert:
+      selector_visible: '[data-testid="owner-reassign-sheet"]'
+
+  - id: 140-reassign-waiter-close
+    action: press
+    selector: '[data-testid="owner-reassign-sheet"]'
+    value: Escape
+    label: Close the sheet
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill, with the bill.reassign_staff grant
+
+  - id: 150-cancel-item
+    action: click
+    selector: '[data-testid^="owner-cancel-"]'
+    label: Cancel an item — reasons and consequence (not confirmed)
+    expect_screen: owner-cancel-item
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an open bill with an item that can still be cancelled
+    assert:
+      selector_visible: '[data-testid="owner-cancel-dialog"]'
+
+  # Escape rather than "Keep it": owner-cancel-dialog-keep shares its prefix
+  # with the item buttons, and coverage would credit the wrong control.
+  - id: 160-cancel-item-close
+    action: press
+    selector: '[data-testid="owner-cancel-dialog"]'
+    value: Escape
+    label: Keep the item
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill with an item that can still be cancelled
+
+  - id: 170-detach
+    action: click
+    selector: '[data-testid^="owner-bill-detach-"]'
+    label: Detach a table from a grouped bill (not confirmed)
+    expect_screen: owner-bill-detach
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a grouped bill across several tables
+    assert:
+      selector_visible: '[data-testid="owner-bill-detach"]'
+
+  - id: 180-detach-close
+    action: press
+    selector: '[data-testid="owner-bill-detach"]'
+    value: Escape
+    label: Keep the group
+    screenshot: false
+    optional: true
+    optional_reason: needs a grouped bill across several tables
+
+  - id: 190-close-bill
+    action: click
+    selector: '[data-testid="owner-open-close"]'
+    label: Close the bill — the order, the money, discount and payment mode (nothing recorded)
+    expect_screen: owner-close-sheet
+    screenshot: full
+    optional: true
+    optional_reason: needs an open bill
+    assert:
+      selector_visible: '[data-testid="owner-close-sheet"]'
+
+  - id: 193-close-bill-cancel
+    action: click
+    selector: '[data-testid="owner-close-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill
+
+  - id: 196-close-bill-again
+    action: click
+    selector: '[data-testid="owner-open-close"]'
+    label: Close the bill again
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill
+    assert:
+      selector_visible: '[data-testid="owner-close-sheet"]'
+
+  - id: 200-close-bill-escape
+    action: press
+    selector: '[data-testid="owner-close-sheet"]'
+    value: Escape
+    label: Close without recording a payment
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill
+
+  # A takeaway bill: its own packaging charge and "add more".
+  - id: 210-takeaway-bill
+    action: click
+    selector: '[data-testid^="owner-bill-takeaway-"]'
+    label: An open takeaway
+    expect_screen: owner-takeaway-bill
+    screenshot: full
+    optional: true
+    optional_reason: needs an open takeaway order
+    assert:
+      selector_visible: '[data-testid="owner-takeaway-actions"]'
+
+  - id: 220-packaging
+    action: click
+    selector: '[data-testid="owner-takeaway-packaging-edit"]'
+    label: The packaging charge (never saved)
+    expect_screen: owner-takeaway-packaging
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an open takeaway order
+    assert:
+      selector_visible: '[data-testid="owner-takeaway-packaging-sheet"]'
+
+  - id: 230-packaging-cancel
+    action: click
+    selector: '[data-testid="owner-takeaway-packaging-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs an open takeaway order
+
+  - id: 240-packaging-again
+    action: click
+    selector: '[data-testid="owner-takeaway-packaging-edit"]'
+    label: The packaging charge again
+    screenshot: false
+    optional: true
+    optional_reason: needs an open takeaway order
+
+  - id: 250-packaging-escape
+    action: press
+    selector: '[data-testid="owner-takeaway-packaging-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs an open takeaway order
+
+  - id: 260-takeaway-more
+    action: click
+    selector: '[data-testid="owner-takeaway-more"]'
+    label: Add more to the takeaway — the round sheet (nothing sent)
+    expect_screen: owner-takeaway-more
+    screenshot: viewport
+    optional: true
+    optional_reason: needs an open takeaway order
+    assert:
+      selector_visible: '[data-testid="owner-new-round"]'
+
+  - id: 270-takeaway-more-close
+    action: press
+    selector: '[data-testid="owner-new-round"]'
+    value: Escape
+    label: Close the sheet
+    screenshot: false
+    optional: true
+    optional_reason: needs an open takeaway order
+
+  - id: 280-new-takeaway
+    action: click
+    selector: '[data-testid="owner-orders-takeaway"]'
+    label: Takeaway from Live orders — the round sheet (nothing sent)
+    expect_screen: owner-orders-new-takeaway
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-new-round"]'
+
+  - id: 290-new-takeaway-close
+    action: press
+    selector: '[data-testid="owner-new-round"]'
+    value: Escape
+    label: Close the sheet
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-new-round"]'

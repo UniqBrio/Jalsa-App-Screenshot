@@ -1,0 +1,60 @@
+# The audit log (every consequential action, filtered and searched) and
+# Uplift (what the extras earned). Views only; nothing here writes.
+schema_version: 2
+module: owner
+flow: audit-uplift
+title: Owner — audit log and uplift
+description: The audit log with its action filter and search, and the Uplift figures.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 900
+
+vars:
+  AUDIT_SEARCH: bill
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-audit
+    action: click
+    selector: '[data-testid="owner-nav-audit"]'
+    label: Audit log — every consequential action, with the minute and the name
+    expect_screen: owner-audit
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-audit"]'
+
+  - id: 030-filter-all
+    action: click
+    selector: '[data-testid="owner-audit-filter-all"]'
+    label: The action filter — All
+    screenshot: false
+
+  - id: 040-search
+    action: type
+    selector: '[data-testid="owner-audit-table-search"]'
+    value: '{{AUDIT_SEARCH}}'
+    run_tag: false
+    label: Searching the log
+    expect_screen: owner-audit-search
+    screenshot: viewport
+
+  - id: 050-uplift
+    action: click
+    selector: '[data-testid="owner-nav-uplift"]'
+    label: Uplift — repeat guests, tips and parcels
+    expect_screen: owner-uplift
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-uplift"]'

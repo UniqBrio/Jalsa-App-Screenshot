@@ -1,0 +1,413 @@
+# Print setup (Printers › Manage): overview, printers, bridges, templates,
+# routing and history. Everything is opened and closed, or only viewed.
+#
+# Never pressed: the two "Enable automatic printing" switches (they save
+# the print setting at once), Test print, Save on a printer or a template,
+# Delete confirms, Issue / Revoke a bridge key, Retry, Print elsewhere's
+# confirm, the template's form controls (width, font, fields, layout —
+# they edit the template being saved), and choosing a printer or station
+# in Routing (each choice saves at once). Routing pickers are only opened
+# and closed with Escape.
+#
+# Note: "owner-print-templates" is used twice in the app — by the Templates
+# tab chip and by the Templates tile on the overview. The chip comes first
+# in the page, so step 060 presses the chip; coverage credits the tile.
+schema_version: 2
+module: owner
+flow: print-setup
+title: Owner — print setup
+description: Printers › Manage — overview, the printers list and its form, bridges, templates, routing and print history; opened and closed, nothing saved.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-printers
+    action: click
+    selector: '[data-testid="owner-nav-printers"]'
+    label: Printers
+    screenshot: false
+
+  - id: 030-manage
+    action: click
+    selector: '[data-testid="owner-printers-manage"]'
+    label: Print setup — the overview, the switches and the machines
+    expect_screen: owner-print-overview
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-print-switches"]'
+
+  - id: 040-tile-kot
+    action: click
+    selector: '[data-testid="owner-print-kot-count"]'
+    label: The KOT printing tile opens the printers list
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-print-add"]'
+
+  - id: 050-overview
+    action: click
+    selector: '[data-testid="owner-print-overview"]'
+    label: Back to the overview
+    screenshot: false
+
+  - id: 060-templates-chip
+    action: click
+    selector: '[data-testid="owner-print-templates"]'
+    label: The Templates tab
+    screenshot: false
+
+  - id: 070-overview
+    action: click
+    selector: '[data-testid="owner-print-overview"]'
+    label: Back to the overview
+    screenshot: false
+
+  - id: 080-tile-bill
+    action: click
+    selector: '[data-testid="owner-print-bill-count"]'
+    label: The bill printing tile opens the printers list
+    screenshot: false
+
+  - id: 090-overview
+    action: click
+    selector: '[data-testid="owner-print-overview"]'
+    label: Back to the overview
+    screenshot: false
+
+  - id: 100-tile-failed
+    action: click
+    selector: '[data-testid="owner-print-failed"]'
+    label: The failed tickets tile opens the history
+    screenshot: false
+
+  - id: 110-overview
+    action: click
+    selector: '[data-testid="owner-print-overview"]'
+    label: Back to the overview
+    screenshot: false
+
+  - id: 120-alerts-history
+    action: click
+    selector: '[data-testid="owner-print-open-history"]'
+    label: An alert's "open the history"
+    screenshot: false
+    optional: true
+    optional_reason: shown only while a printer or ticket needs attention
+
+  # Printers tab.
+  - id: 130-printers-tab
+    action: click
+    selector: '[data-testid="owner-print-printers"]'
+    label: Printers — every printer Jalsa knows
+    expect_screen: owner-print-printers
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-print-add"]'
+
+  - id: 140-add
+    action: click
+    selector: '[data-testid="owner-print-add"]'
+    label: Add a printer — the form (never saved)
+    expect_screen: owner-print-form-new
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-print-form"]'
+
+  - id: 150-add-cancel
+    action: click
+    selector: '[data-testid="owner-print-cancel"]'
+    label: Cancel
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-print-form"]'
+
+  - id: 160-add-again
+    action: click
+    selector: '[data-testid="owner-print-add"]'
+    label: Add a printer again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-print-form"]'
+
+  - id: 170-add-escape
+    action: press
+    selector: '[data-testid="owner-print-form"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+
+  - id: 180-configure
+    action: click
+    selector: '[data-testid^="owner-print-configure-"]'
+    label: Configure a printer — its form, filled in (never saved)
+    expect_screen: owner-print-form-edit
+    screenshot: full
+    optional: true
+    optional_reason: needs a printer, and the set.printer grant
+    assert:
+      selector_visible: '[data-testid="owner-print-form"]'
+
+  - id: 190-form-delete
+    action: click
+    selector: '[data-testid="owner-print-delete"]'
+    label: Delete from the form — the confirmation (not confirmed)
+    expect_screen: owner-print-delete-confirm
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a printer, and the set.printer grant
+    assert:
+      selector_visible: '[data-testid="owner-print-delete-confirm"]'
+
+  # Escape rather than "Keep it": owner-print-delete-confirm-keep shares its
+  # prefix with the tab chips, and coverage would credit the wrong control.
+  - id: 200-form-delete-close
+    action: press
+    selector: '[data-testid="owner-print-delete-confirm"]'
+    value: Escape
+    label: Keep it
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer, and the set.printer grant
+
+  - id: 210-configure-cancel
+    action: click
+    selector: '[data-testid="owner-print-cancel"]'
+    label: Cancel the form
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer, and the set.printer grant
+
+  - id: 220-row-delete
+    action: click
+    selector: '[data-testid^="owner-print-row-delete-"]'
+    label: Delete from the list — the same confirmation
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer, and the set.printer grant
+    assert:
+      selector_visible: '[data-testid="owner-print-delete-confirm"]'
+
+  - id: 230-row-delete-close
+    action: press
+    selector: '[data-testid="owner-print-delete-confirm"]'
+    value: Escape
+    label: Keep it
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer, and the set.printer grant
+
+  - id: 240-preview
+    action: click
+    selector: '[data-testid^="owner-print-preview-"]'
+    label: A printer's preview (not printed)
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+    assert:
+      selector_visible: '[data-testid="owner-printer-preview"]'
+
+  - id: 250-preview-close
+    action: press
+    selector: '[data-testid="owner-printer-preview"]'
+    value: Escape
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: needs a printer set up in Jalsa
+
+  # Bridges and templates.
+  - id: 260-bridges
+    action: click
+    selector: '[data-testid="owner-print-bridges"]'
+    label: Bridges — the keys printing computers sign in with
+    expect_screen: owner-print-bridges
+    screenshot: full
+
+  - id: 270-templates
+    action: click
+    selector: '[data-testid="owner-print-templates"]'
+    label: Templates — the kitchen ticket, with its live preview
+    expect_screen: owner-print-templates-kot
+    screenshot: full
+
+  - id: 280-template-bill
+    action: click
+    selector: '[data-testid="owner-print-kind-bill"]'
+    label: Templates — the bill
+    expect_screen: owner-print-templates-bill
+    screenshot: full
+
+  - id: 290-template-kot
+    action: click
+    selector: '[data-testid="owner-print-kind-kot"]'
+    label: Back to the kitchen ticket
+    screenshot: false
+
+  # Routing: each picker saves on choosing, so they are opened and closed.
+  - id: 300-routing
+    action: click
+    selector: '[data-testid="owner-print-routing"]'
+    label: Routing — which printer each category and dish goes to
+    expect_screen: owner-print-routing
+    screenshot: full
+
+  - id: 310-route-picker
+    action: click
+    selector: '[data-testid^="owner-print-route-"]'
+    label: A category's printer picker, open (nothing chosen)
+    expect_screen: owner-print-route-picker
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a menu category and the set.printer grant
+
+  - id: 320-route-picker-close
+    action: press
+    selector: '[data-testid^="owner-print-route-"]'
+    value: Escape
+    label: Close without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs a menu category and the set.printer grant
+
+  - id: 330-station-all
+    action: click
+    selector: '[data-testid="owner-print-station-all"]'
+    label: Set every dish's station — the picker, open (nothing chosen)
+    screenshot: false
+    optional: true
+    optional_reason: needs dishes on the menu and the set.printer grant
+    assert:
+      selector_visible: '[data-testid="owner-print-station-all-list"]'
+
+  - id: 340-station-all-close
+    action: press
+    selector: '[data-testid="owner-print-station-all"]'
+    value: Escape
+    label: Close without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs dishes on the menu and the set.printer grant
+
+  - id: 350-item-station
+    action: click
+    selector: '[data-testid^="owner-print-item-station-"]'
+    label: One dish's station picker, open
+    screenshot: false
+    optional: true
+    optional_reason: needs dishes on the menu and the set.printer grant
+
+  - id: 360-item-station-close
+    action: press
+    selector: '[data-testid^="owner-print-item-station-"]'
+    value: Escape
+    label: Close without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs dishes on the menu and the set.printer grant
+
+  - id: 370-item-printer
+    action: click
+    selector: '[data-testid^="owner-print-item-printer-"]'
+    label: One dish's printer picker, open
+    screenshot: false
+    optional: true
+    optional_reason: needs dishes on the menu, a kitchen printer and the set.printer grant
+
+  - id: 380-item-printer-close
+    action: press
+    selector: '[data-testid^="owner-print-item-printer-"]'
+    value: Escape
+    label: Close without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs dishes on the menu, a kitchen printer and the set.printer grant
+
+  # History.
+  - id: 390-history
+    action: click
+    selector: '[data-testid="owner-print-history"]'
+    label: History — tonight's print jobs
+    expect_screen: owner-print-history
+    screenshot: full
+
+  - id: 400-history-failed
+    action: click
+    selector: '[data-testid="owner-print-filter-Failed"]'
+    label: History — failed only
+    expect_screen: owner-print-history-failed
+    screenshot: viewport
+
+  - id: 410-history-all
+    action: click
+    selector: '[data-testid="owner-print-filter-All"]'
+    label: History — all
+    screenshot: false
+
+  - id: 420-elsewhere
+    action: click
+    selector: '[data-testid^="owner-print-elsewhere-"]'
+    label: Print elsewhere — choose a machine (nothing sent)
+    expect_screen: owner-print-elsewhere
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a ticket that has not printed, and the reprint grant
+    assert:
+      selector_visible: '[data-testid="owner-print-elsewhere-sheet"]'
+
+  - id: 430-elsewhere-picker
+    action: click
+    selector: '[data-testid="owner-print-elsewhere-picker"]'
+    label: The machine picker, open
+    screenshot: false
+    optional: true
+    optional_reason: needs a ticket that has not printed, and the reprint grant
+
+  - id: 440-elsewhere-picker-close
+    action: press
+    selector: '[data-testid="owner-print-elsewhere-picker"]'
+    value: Escape
+    label: Close the picker without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs a ticket that has not printed, and the reprint grant
+
+  - id: 450-elsewhere-cancel
+    action: click
+    selector: '[data-testid="owner-print-elsewhere-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs a ticket that has not printed, and the reprint grant
+
+  - id: 460-elsewhere-again
+    action: click
+    selector: '[data-testid^="owner-print-elsewhere-"]'
+    label: Print elsewhere again
+    screenshot: false
+    optional: true
+    optional_reason: needs a ticket that has not printed, and the reprint grant
+    assert:
+      selector_visible: '[data-testid="owner-print-elsewhere-sheet"]'
+
+  - id: 470-elsewhere-escape
+    action: press
+    selector: '[data-testid="owner-print-elsewhere-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs a ticket that has not printed, and the reprint grant

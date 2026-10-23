@@ -1,0 +1,218 @@
+# The menu: the dish table, a dish's form (new and existing), a category's
+# form, the delete confirmations and the sub-menu picker — each opened and
+# closed without saving.
+#
+# Never pressed: Save (dish, category, food type), the Available switch and
+# Put back on the menu (they change the live menu), the delete confirms,
+# "Make it top level", choosing a sub-menu parent, and the photo picker
+# (it uploads). Pickers are only opened to show their lists, then closed
+# with Escape. The menu search runs last, so the rows the earlier steps
+# press are not filtered away.
+schema_version: 2
+module: owner
+flow: menu
+title: Owner — menu
+description: The dish table, the add/edit dish form, a category form, delete confirmations, the sub-menu picker and the menu search — nothing saved.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+vars:
+  MENU_SEARCH: biryani
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-menu
+    action: click
+    selector: '[data-testid="owner-nav-menu"]'
+    label: Menu — what is off tonight, every dish, sub-menus and food types
+    expect_screen: owner-menu
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-menu"]'
+
+  - id: 030-add-item
+    action: click
+    selector: '[data-testid="owner-add-item"]'
+    label: Add a dish — the empty form (never saved)
+    expect_screen: owner-item-new
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-item-sheet"]'
+
+  - id: 040-item-category
+    action: click
+    selector: '[data-testid="owner-item-category"]'
+    label: The category picker, open
+    expect_screen: owner-item-category
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-item-category-list"]'
+
+  - id: 050-item-category-close
+    action: press
+    selector: '[data-testid="owner-item-category"]'
+    value: Escape
+    label: Close the picker without choosing
+    screenshot: false
+
+  - id: 060-item-cancel
+    action: click
+    selector: '[data-testid="owner-item-cancel"]'
+    label: Cancel
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-item-sheet"]'
+
+  - id: 070-edit-item
+    action: click
+    selector: '[data-testid^="owner-edit-"]'
+    label: Edit a dish — the form, filled in (never saved)
+    expect_screen: owner-item-edit
+    screenshot: full
+    optional: true
+    optional_reason: needs at least one dish on the menu
+    assert:
+      selector_visible: '[data-testid="owner-item-sheet"]'
+
+  - id: 080-edit-item-close
+    action: press
+    selector: '[data-testid="owner-item-sheet"]'
+    value: Escape
+    label: Close without saving
+    screenshot: false
+    optional: true
+    optional_reason: needs at least one dish on the menu
+
+  - id: 090-delete-item
+    action: click
+    selector: '[data-testid^="owner-delete-"]'
+    label: Delete a dish — the confirmation (not confirmed)
+    expect_screen: owner-item-delete
+    screenshot: viewport
+    optional: true
+    optional_reason: needs at least one dish on the menu
+    assert:
+      selector_visible: '[data-testid="owner-item-delete-confirm"]'
+
+  - id: 100-delete-item-keep
+    action: click
+    selector: '[data-testid="owner-item-delete-confirm-keep"]'
+    label: Keep it
+    screenshot: false
+    optional: true
+    optional_reason: needs at least one dish on the menu
+
+  - id: 110-off-menu-delete
+    action: click
+    selector: '[data-testid^="owner-off-delete-"]'
+    label: Delete a dish that is off the menu — the confirmation (not confirmed)
+    screenshot: false
+    optional: true
+    optional_reason: needs a dish switched off for tonight
+    assert:
+      selector_visible: '[data-testid="owner-item-delete-confirm"]'
+
+  - id: 120-off-menu-delete-close
+    action: press
+    selector: '[data-testid="owner-item-delete-confirm"]'
+    value: Escape
+    label: Keep it
+    screenshot: false
+    optional: true
+    optional_reason: needs a dish switched off for tonight
+
+  - id: 130-category-add
+    action: click
+    selector: '[data-testid="owner-category-add"]'
+    label: Add a category — the form (never saved)
+    expect_screen: owner-category-new
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-category-sheet"]'
+
+  - id: 140-category-printer
+    action: click
+    selector: '[data-testid="owner-category-printer"]'
+    label: The category's printer picker, open
+    expect_screen: owner-category-printer
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a kitchen printer to choose from
+    assert:
+      selector_visible: '[data-testid="owner-category-printer-list"]'
+
+  - id: 150-category-printer-close
+    action: press
+    selector: '[data-testid="owner-category-printer"]'
+    value: Escape
+    label: Close the picker without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs a kitchen printer to choose from
+
+  - id: 160-category-cancel
+    action: click
+    selector: '[data-testid="owner-category-cancel"]'
+    label: Cancel
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-category-sheet"]'
+
+  - id: 170-category-add-again
+    action: click
+    selector: '[data-testid="owner-category-add"]'
+    label: Add a category again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-category-sheet"]'
+
+  - id: 180-category-escape
+    action: press
+    selector: '[data-testid="owner-category-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+
+  # Choosing a parent here moves the category at once, so the list is only
+  # opened and closed.
+  - id: 190-sub-menu
+    action: click
+    selector: '[data-testid^="owner-sub-menu-parent-"]'
+    label: Sub-menus — the "put it under" picker, open (nothing chosen)
+    expect_screen: owner-sub-menu-picker
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a category that has no sub-menus of its own
+    assert:
+      selector_visible: '[data-testid="owner-sub-menus"]'
+
+  - id: 200-sub-menu-close
+    action: press
+    selector: '[data-testid^="owner-sub-menu-parent-"]'
+    value: Escape
+    label: Close the picker without choosing
+    screenshot: false
+    optional: true
+    optional_reason: needs a category that has no sub-menus of its own
+
+  - id: 210-search
+    action: type
+    selector: '[data-testid="owner-menu-table-search"]'
+    value: '{{MENU_SEARCH}}'
+    run_tag: false
+    label: Searching the dish table
+    expect_screen: owner-menu-search
+    screenshot: viewport

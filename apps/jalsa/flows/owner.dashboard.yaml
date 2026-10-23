@@ -1,0 +1,126 @@
+# The owner's dashboard and the ways out of it: each "Today" tile opens its
+# section, and the console search jumps straight to a screen. Every step
+# only navigates. Sign out is never pressed: it would end the session every
+# owner flow shares.
+schema_version: 2
+module: owner
+flow: dashboard
+title: Owner — dashboard
+description: Today's figures, requests, the floor and suggestions; each Today tile, and the console search.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-dashboard
+    action: goto
+    value: /owner
+    label: The dashboard — today, the requests, the floor and what guests wrote
+    expect_screen: owner-dashboard
+    screenshot: full
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-dashboard"]'
+
+  # Only while no printing computer has been connected.
+  - id: 020-connect-printer
+    action: click
+    selector: '[data-testid="owner-dashboard-connect-printer"]'
+    label: The "connect your printing computer" banner opens Printers
+    screenshot: false
+    optional: true
+    optional_reason: shown only while no printing computer is connected
+    assert:
+      selector_visible: '[data-testid="owner-printers"]'
+
+  - id: 030-dashboard
+    action: click
+    selector: '[data-testid="owner-nav-dashboard"]'
+    label: Back to the dashboard
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-dashboard"]'
+
+  - id: 040-kpi-sales
+    action: click
+    selector: '[data-testid="owner-kpi-sales"]'
+    label: Sales recorded — opens Reports
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-reports"]'
+
+  - id: 050-dashboard
+    action: click
+    selector: '[data-testid="owner-nav-dashboard"]'
+    label: Back to the dashboard
+    screenshot: false
+
+  - id: 060-kpi-open
+    action: click
+    selector: '[data-testid="owner-kpi-open"]'
+    label: Open bills — opens Live orders
+    screenshot: false
+
+  - id: 070-dashboard
+    action: click
+    selector: '[data-testid="owner-nav-dashboard"]'
+    label: Back to the dashboard
+    screenshot: false
+
+  - id: 080-kpi-closure
+    action: click
+    selector: '[data-testid="owner-kpi-closure"]'
+    label: Awaiting closure — opens Payments
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-payments"]'
+
+  - id: 090-dashboard
+    action: click
+    selector: '[data-testid="owner-nav-dashboard"]'
+    label: Back to the dashboard
+    screenshot: false
+
+  - id: 100-kpi-tips
+    action: click
+    selector: '[data-testid="owner-kpi-tips"]'
+    label: Tips collected — opens Tips
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-tips"]'
+
+  - id: 110-dashboard
+    action: click
+    selector: '[data-testid="owner-nav-dashboard"]'
+    label: Back to the dashboard
+    screenshot: false
+
+  - id: 120-kpi-print
+    action: click
+    selector: '[data-testid="owner-kpi-print"]'
+    label: Print failures — opens Live orders
+    screenshot: false
+
+  - id: 130-search
+    action: type
+    selector: '[data-testid="owner-search-input"]'
+    value: GST
+    run_tag: false
+    label: Search the console — every screen that matches
+    expect_screen: owner-search
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-search-results"]'
+
+  - id: 140-search-result
+    action: click
+    selector: '[data-testid="owner-search-result-settings-tax"]'
+    label: A result opens its screen — Settings › Tax & GST
+    expect_screen: owner-settings-tax-from-search
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-settings"]'

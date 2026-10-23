@@ -1,0 +1,222 @@
+# The dashboard's floor and its sheets, each opened and closed without
+# confirming. GUEST_TABLE should be a free, in-service table: tapping it opens
+# the new-round sheet. A takeaway is started the same way and closed again.
+#
+# Never pressed: "+" / "−" on a dish and Send (they place a round), Mark it
+# clear, the confirm buttons of Mark free, Cancel order and Move table, Done
+# on a request, and Send acknowledgement — all post to /api/owner/action.
+# The canned replies only fill the reply box, which is a form value, so they
+# are not pressed either.
+schema_version: 2
+module: owner
+flow: dashboard-floor
+title: Owner — the floor from the dashboard
+description: A new round for a free table, a takeaway, the floor's Mark free / Cancel order / Move table dialogs, and replying to a suggestion — all opened and cancelled.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+vars:
+  MENU_SEARCH: biryani
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-dashboard
+    action: goto
+    value: /owner
+    label: The dashboard
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-dashboard"]'
+
+  - id: 020-free-table
+    action: click
+    selector: '[data-testid="owner-floor-{{GUEST_TABLE}}"]'
+    label: A free table — the new-round sheet (nothing added, nothing sent)
+    expect_screen: owner-new-round-table
+    screenshot: full
+    optional: true
+    optional_reason: GUEST_TABLE must be free and in service
+    assert:
+      selector_visible: '[data-testid="owner-new-round"]'
+
+  - id: 030-new-round-search
+    action: type
+    selector: '[data-testid="owner-new-round-search"]'
+    value: '{{MENU_SEARCH}}'
+    run_tag: false
+    label: Searching the menu inside the sheet
+    expect_screen: owner-new-round-search
+    screenshot: viewport
+    optional: true
+    optional_reason: GUEST_TABLE must be free and in service
+
+  - id: 040-new-round-close
+    action: press
+    selector: '[data-testid="owner-new-round"]'
+    value: Escape
+    label: Close the sheet
+    screenshot: false
+    optional: true
+    optional_reason: GUEST_TABLE must be free and in service
+    assert:
+      selector_hidden: '[data-testid="owner-new-round"]'
+
+  # If GUEST_TABLE was seated, step 020 opened its bill in Live orders instead.
+  - id: 045-dashboard
+    action: click
+    selector: '[data-testid="owner-nav-dashboard"]'
+    label: Back to the dashboard
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-dashboard"]'
+
+  - id: 050-takeaway
+    action: click
+    selector: '[data-testid="owner-takeaway-start"]'
+    label: Takeaway — the same sheet for an order at no table (nothing sent)
+    expect_screen: owner-new-round-takeaway
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-new-round"]'
+
+  # "+ New dish" only unfolds a form inside the sheet; its Save posts
+  # add-dish and is never pressed.
+  - id: 053-new-dish
+    action: click
+    selector: '[data-testid="owner-new-round-new-dish"]'
+    label: A dish the menu does not have yet — the inline form (never saved)
+    expect_screen: owner-new-round-new-dish
+    screenshot: viewport
+    optional: true
+    optional_reason: needs the grant to add a dish to the menu
+    assert:
+      selector_visible: '[data-testid="owner-new-round-new-dish-form"]'
+
+  - id: 056-new-dish-cancel
+    action: click
+    selector: '[data-testid="owner-new-round-new-dish-cancel"]'
+    label: Cancel the new dish
+    screenshot: false
+    optional: true
+    optional_reason: needs the grant to add a dish to the menu
+
+  - id: 060-takeaway-close
+    action: press
+    selector: '[data-testid="owner-new-round"]'
+    value: Escape
+    label: Close the sheet
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-new-round"]'
+
+  - id: 070-mark-free
+    action: click
+    selector: '[data-testid^="owner-free-table-"]'
+    label: Mark free — what freeing the table does (not confirmed)
+    expect_screen: owner-free-table-sheet
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a table holding something but no rounds
+    assert:
+      selector_visible: '[data-testid="owner-free-table-sheet"]'
+
+  - id: 080-mark-free-cancel
+    action: click
+    selector: '[data-testid="owner-free-table-cancel"]'
+    label: Keep the table
+    screenshot: false
+    optional: true
+    optional_reason: needs a table holding something but no rounds
+
+  - id: 090-mark-free-again
+    action: click
+    selector: '[data-testid^="owner-free-table-"]'
+    label: Mark free again
+    screenshot: false
+    optional: true
+    optional_reason: needs a table holding something but no rounds
+    assert:
+      selector_visible: '[data-testid="owner-free-table-sheet"]'
+
+  - id: 100-mark-free-escape
+    action: press
+    selector: '[data-testid="owner-free-table-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs a table holding something but no rounds
+
+  - id: 110-cancel-order
+    action: click
+    selector: '[data-testid^="owner-cancel-order-"]'
+    label: Cancel order — the reasons, and the table freed with it (not confirmed)
+    expect_screen: owner-cancel-order
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a seated table with rounds sent
+    assert:
+      selector_visible: '[data-testid="owner-cancel-order"]'
+
+  # Escape rather than "Keep it": owner-cancel-order-keep shares its prefix
+  # with the floor buttons, and coverage would credit the wrong control.
+  - id: 120-cancel-order-close
+    action: press
+    selector: '[data-testid="owner-cancel-order"]'
+    value: Escape
+    label: Keep the order
+    screenshot: false
+    optional: true
+    optional_reason: needs a seated table with rounds sent
+
+  - id: 130-move-table
+    action: click
+    selector: '[data-testid^="owner-move-table-"]'
+    label: Move table — the free tables the party could go to (none chosen)
+    expect_screen: owner-move-table
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a seated table holding an order
+    assert:
+      selector_visible: '[data-testid="owner-move-table"]'
+
+  - id: 140-move-table-close
+    action: press
+    selector: '[data-testid="owner-move-table"]'
+    value: Escape
+    label: Stay where they are
+    screenshot: false
+    optional: true
+    optional_reason: needs a seated table holding an order
+
+  - id: 150-reply
+    action: click
+    selector: '[data-testid^="owner-reply-"]'
+    label: Send thanks — the reply box under a guest's suggestion (never sent)
+    expect_screen: owner-reply
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a guest suggestion that has not been answered
+    assert:
+      selector_visible: '[data-testid="owner-reply-cancel"]'
+
+  - id: 160-reply-cancel
+    action: click
+    selector: '[data-testid="owner-reply-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs a guest suggestion that has not been answered
+
+  - id: 170-takeaway-open
+    action: click
+    selector: '[data-testid^="owner-takeaway-open-"]'
+    label: An open takeaway opens in Live orders
+    screenshot: false
+    optional: true
+    optional_reason: needs an open takeaway order

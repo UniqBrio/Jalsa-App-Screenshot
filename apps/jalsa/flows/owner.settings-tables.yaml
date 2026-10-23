@@ -1,0 +1,183 @@
+# Settings › Tables & QR: the door code, the "block your table" poster, and
+# one table's QR, stand and form — each opened and closed. GUEST_TABLE names
+# the table used.
+#
+# Never pressed: Close / Open the queue, Save or Delete a table (the delete
+# confirm), the Active switch, Print on the stand (window.print), and the
+# "open / print" QR links (they open a new tab on an image).
+schema_version: 2
+module: owner
+flow: settings-tables
+title: Owner — tables and QR codes
+description: The door code and poster sheets, one table's QR code and tabletop stand, and the table form with its delete confirmation — opened and closed.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 900
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-settings
+    action: click
+    selector: '[data-testid="owner-nav-settings"]'
+    label: Settings
+    screenshot: false
+
+  - id: 030-tables
+    action: click
+    selector: '[data-testid="owner-settings-tables"]'
+    label: Tables & QR
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-entrance-qr"]'
+
+  - id: 040-door-code
+    action: click
+    selector: '[data-testid="owner-entrance-qr-open"]'
+    label: The door code — the QR a party scans to join the queue
+    expect_screen: owner-entrance-qr
+    screenshot: viewport
+    optional: true
+    optional_reason: needs the tables.qr grant
+    assert:
+      selector_visible: '[data-testid="owner-entrance-qr-sheet"]'
+
+  - id: 050-door-code-close
+    action: press
+    selector: '[data-testid="owner-entrance-qr-sheet"]'
+    value: Escape
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: needs the tables.qr grant
+
+  - id: 060-poster
+    action: click
+    selector: '[data-testid="owner-block-table-open"]'
+    label: The "Scan to Block Your Table" poster
+    expect_screen: owner-block-table-poster
+    screenshot: viewport
+    optional: true
+    optional_reason: needs the tables.qr grant
+    assert:
+      selector_visible: '[data-testid="owner-block-table-sheet"]'
+
+  - id: 070-poster-close
+    action: press
+    selector: '[data-testid="owner-block-table-sheet"]'
+    value: Escape
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: needs the tables.qr grant
+
+  - id: 080-table-qr
+    action: click
+    selector: '[data-testid="owner-qr-{{GUEST_TABLE}}"]'
+    label: One table's QR code
+    expect_screen: owner-table-qr
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-qr-sheet"]'
+
+  - id: 090-table-qr-close
+    action: press
+    selector: '[data-testid="owner-qr-sheet"]'
+    value: Escape
+    label: Close
+    screenshot: false
+
+  - id: 100-stand
+    action: click
+    selector: '[data-testid="owner-stand-{{GUEST_TABLE}}"]'
+    label: The tabletop stand — front and back, as printed (not printed)
+    expect_screen: owner-table-stand
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-stand-sheet"]'
+
+  - id: 110-stand-close
+    action: click
+    selector: '[data-testid="owner-stand-close"]'
+    label: Close
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-stand-sheet"]'
+
+  - id: 120-stand-again
+    action: click
+    selector: '[data-testid="owner-stand-{{GUEST_TABLE}}"]'
+    label: The stand again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-stand-sheet"]'
+
+  - id: 130-stand-escape
+    action: press
+    selector: '[data-testid="owner-stand-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+
+  - id: 140-edit-table
+    action: click
+    selector: '[data-testid="owner-edit-table-{{GUEST_TABLE}}"]'
+    label: Edit a table — name, zone, seats, in service (never saved)
+    expect_screen: owner-table-edit
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-table-sheet"]'
+
+  - id: 150-table-delete
+    action: click
+    selector: '[data-testid="owner-table-delete"]'
+    label: Delete the table — the confirmation (not confirmed)
+    expect_screen: owner-table-delete
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-table-delete-confirm"]'
+
+  - id: 160-table-delete-keep
+    action: click
+    selector: '[data-testid="owner-table-delete-confirm-keep"]'
+    label: Keep it
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-table-delete-confirm"]'
+
+  - id: 170-table-cancel
+    action: click
+    selector: '[data-testid="owner-table-cancel"]'
+    label: Cancel the form
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-table-sheet"]'
+
+  - id: 180-add-table
+    action: click
+    selector: '[data-testid="owner-add-table"]'
+    label: Add a table — the empty form (never saved)
+    expect_screen: owner-table-new
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-table-sheet"]'
+
+  - id: 190-add-table-escape
+    action: press
+    selector: '[data-testid="owner-table-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-table-sheet"]'

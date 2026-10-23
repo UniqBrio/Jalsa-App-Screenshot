@@ -1,0 +1,37 @@
+# The owner console's sign-in: the same PIN keypad as /staff, with its own
+# session. Signed out; one digit in and out, never a whole PIN (the fourth
+# digit submits).
+schema_version: 2
+module: owner
+flow: sign-in
+title: Owner — the PIN keypad
+description: The owner console's sign-in screen at /owner, signed out.
+scenario_class: happy
+auth: none
+audience: a restaurant owner
+settle_ms: 600
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-keypad
+    action: goto
+    value: /owner
+    label: Owner sign in — the same four-digit keypad, a separate session
+    expect_screen: owner-signin
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="staff-signin"]'
+
+  - id: 020-one-digit
+    action: click
+    selector: '[data-testid="staff-key-1"]'
+    label: One digit in (never a whole PIN)
+    screenshot: false
+
+  - id: 030-delete
+    action: click
+    selector: '[data-testid="staff-key-back"]'
+    label: Delete it again
+    screenshot: false

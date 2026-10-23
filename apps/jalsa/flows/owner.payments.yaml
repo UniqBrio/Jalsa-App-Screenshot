@@ -1,0 +1,109 @@
+# Payments: bills waiting to be closed and tonight's closed bills. A bill's
+# close sheet and a closed bill's detail are opened and closed.
+#
+# Never pressed: Record payment (closes the bill), Print (window.print),
+# Reprint on the bill printer, and Share to WhatsApp (sends the bill); the
+# phone-number box beside it is never typed into.
+schema_version: 2
+module: owner
+flow: payments
+title: Owner — payments
+description: Bills awaiting closure and closed tonight; a close sheet and a closed bill opened and closed, and the closed-bills search.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+vars:
+  BILL_SEARCH: A
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-payments
+    action: click
+    selector: '[data-testid="owner-nav-payments"]'
+    label: Payments — awaiting closure, and closed tonight
+    expect_screen: owner-payments
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-payments"]'
+
+  - id: 030-close
+    action: click
+    selector: '[data-testid^="owner-close-"]'
+    label: A bill awaiting closure — the close sheet (no payment recorded)
+    expect_screen: owner-close-sheet-payments
+    screenshot: full
+    optional: true
+    optional_reason: needs a bill whose guests have asked to pay
+    assert:
+      selector_visible: '[data-testid="owner-close-sheet"]'
+
+  - id: 040-close-cancel
+    action: click
+    selector: '[data-testid="owner-close-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill whose guests have asked to pay
+
+  - id: 050-closed-bill
+    action: click
+    selector: '[data-testid^="owner-open-bill-"]'
+    label: A closed bill — the invoice detail
+    expect_screen: owner-bill-detail
+    screenshot: full
+    optional: true
+    optional_reason: needs a bill closed tonight
+    assert:
+      selector_visible: '[data-testid="owner-bill-detail"]'
+
+  - id: 060-closed-bill-close
+    action: click
+    selector: '[data-testid="owner-bill-detail-close"]'
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed tonight
+
+  - id: 070-closed-bill-again
+    action: click
+    selector: '[data-testid^="owner-open-bill-"]'
+    label: The closed bill again
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed tonight
+    assert:
+      selector_visible: '[data-testid="owner-bill-detail"]'
+
+  - id: 080-closed-bill-escape
+    action: press
+    selector: '[data-testid="owner-bill-detail"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed tonight
+
+  # By role, not by test id: "owner-closed-table-search" starts with
+  # "owner-close", so coverage would credit it to the close sheet's cash
+  # field (the owner-close* family), which this step never touches.
+  - id: 090-closed-search
+    action: type
+    selector: 'role=searchbox[name="Search bill, table, captain or mode"]'
+    value: '{{BILL_SEARCH}}'
+    run_tag: false
+    label: Searching today's closed bills
+    expect_screen: owner-closed-search
+    screenshot: viewport

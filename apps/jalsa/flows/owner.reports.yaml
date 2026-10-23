@@ -1,0 +1,185 @@
+# Reports: the date range, every tab, and the searchable tables in them. All
+# views; nothing here writes. The range is set to the last 30 days so the
+# tables have rows to show. Export (a CSV download) is not pressed.
+schema_version: 2
+module: owner
+flow: reports
+title: Owner — reports
+description: Sales & products, all orders, purchases & expenses, the final report and guest insights over a date range, with each table's search.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 1200
+
+vars:
+  REPORT_SEARCH: a
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-reports
+    action: click
+    selector: '[data-testid="owner-nav-reports"]'
+    label: Reports — today
+    expect_screen: owner-reports-today
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-rep-range"]'
+
+  # When nothing has closed today, the empty state offers yesterday.
+  - id: 030-view-yesterday
+    action: click
+    selector: '[data-testid="owner-rep-view-yesterday"]'
+    label: Nothing closed today — "View Yesterday"
+    screenshot: false
+    optional: true
+    optional_reason: shown only when no bill has closed today
+
+  - id: 040-custom
+    action: click
+    selector: '[data-testid="owner-rep-preset-custom"]'
+    label: A custom range — the from and to dates
+    expect_screen: owner-reports-custom
+    screenshot: viewport
+
+  - id: 050-last30
+    action: click
+    selector: '[data-testid="owner-rep-preset-last30"]'
+    label: Sales & products — the last 30 days
+    expect_screen: owner-reports-sales
+    screenshot: full
+    settle_ms: 2000
+
+  - id: 060-menus-search
+    action: type
+    selector: '[data-testid="owner-menus-table-search"]'
+    value: '{{REPORT_SEARCH}}'
+    run_tag: false
+    label: Searching sales by menu
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 070-categories-search
+    action: type
+    selector: '[data-testid="owner-categories-table-search"]'
+    value: '{{REPORT_SEARCH}}'
+    run_tag: false
+    label: Searching sales by category
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 080-food-types-search
+    action: type
+    selector: '[data-testid="owner-food-types-table-search"]'
+    value: '{{REPORT_SEARCH}}'
+    run_tag: false
+    label: Searching sales by food type
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 090-products-search
+    action: type
+    selector: '[data-testid="owner-products-table-search"]'
+    value: '{{REPORT_SEARCH}}'
+    run_tag: false
+    label: Searching the products
+    expect_screen: owner-reports-products-search
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 100-orders-tab
+    action: click
+    selector: '[data-testid="owner-rep-tab-orders"]'
+    label: All orders in the range
+    expect_screen: owner-reports-orders
+    screenshot: full
+
+  - id: 110-orders-takeaway
+    action: click
+    selector: '[data-testid="owner-rep-orders-takeaway"]'
+    label: All orders — takeaway only
+    expect_screen: owner-reports-orders-takeaway
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 120-orders-all
+    action: click
+    selector: '[data-testid="owner-rep-orders-all"]'
+    label: All orders — every type
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 130-orders-search
+    action: type
+    selector: '[data-testid="owner-orders-ledger-search"]'
+    value: '{{REPORT_SEARCH}}'
+    run_tag: false
+    label: Searching the orders
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 140-cancelled-search
+    action: type
+    selector: '[data-testid="owner-cancelled-ledger-search"]'
+    value: '{{REPORT_SEARCH}}'
+    run_tag: false
+    label: Searching the cancelled orders
+    screenshot: false
+    optional: true
+    optional_reason: needs an order cancelled in the range
+
+  - id: 150-expenses-tab
+    action: click
+    selector: '[data-testid="owner-rep-tab-expenses"]'
+    label: Purchases & expenses in the range
+    expect_screen: owner-reports-expenses
+    screenshot: full
+
+  - id: 160-purchases-search
+    action: type
+    selector: '[data-testid="owner-purchases-table-search"]'
+    value: '{{REPORT_SEARCH}}'
+    run_tag: false
+    label: Searching the purchases
+    screenshot: false
+    optional: true
+    optional_reason: needs a bill closed in the range
+
+  - id: 170-final-tab
+    action: click
+    selector: '[data-testid="owner-rep-tab-final"]'
+    label: The final report — income, purchases, net
+    expect_screen: owner-reports-final
+    screenshot: full
+
+  - id: 180-guests-tab
+    action: click
+    selector: '[data-testid="owner-rep-tab-guests"]'
+    label: Guest insights — what guests loved, and how they heard of Jalsa
+    expect_screen: owner-reports-guests
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-rep-guests"]'
+
+  - id: 190-sales-tab
+    action: click
+    selector: '[data-testid="owner-rep-tab-sales"]'
+    label: Back to Sales & products
+    screenshot: false

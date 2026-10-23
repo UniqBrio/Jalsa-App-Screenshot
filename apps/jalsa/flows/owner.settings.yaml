@@ -1,0 +1,140 @@
+# Settings: every panel, viewed. Settings are edited in forms that save on
+# their own Save button, so nothing here presses Save, a switch, a select,
+# a chip that edits a value, the logo picker (it uploads), or the review /
+# WhatsApp / QR links (they leave the app). Only two things are typed or
+# opened: the welcome-drinks dish search, and the default-station picker,
+# which is opened and closed without choosing.
+schema_version: 2
+module: owner
+flow: settings
+title: Owner — settings
+description: Each settings panel — hours, restaurant details, tax, invoice, tables & QR, what the customer sees, words, replies, engagement, printers.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 900
+
+vars:
+  MENU_SEARCH: biryani
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-settings
+    action: click
+    selector: '[data-testid="owner-nav-settings"]'
+    label: Settings
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-settings"]'
+
+  - id: 030-hours
+    action: click
+    selector: '[data-testid="owner-settings-hours"]'
+    label: Opening hours — each day, last orders and the note
+    expect_screen: owner-settings-hours
+    screenshot: full
+
+  - id: 040-identity
+    action: click
+    selector: '[data-testid="owner-settings-identity"]'
+    label: Restaurant details — names, address, registrations and the logo
+    expect_screen: owner-settings-identity
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-identity"]'
+
+  - id: 050-tax
+    action: click
+    selector: '[data-testid="owner-settings-tax"]'
+    label: Tax & GST
+    expect_screen: owner-settings-tax
+    screenshot: full
+
+  - id: 060-invoice
+    action: click
+    selector: '[data-testid="owner-settings-invoice"]'
+    label: Invoice — numbering, rounding and what the bill shows
+    expect_screen: owner-settings-invoice
+    screenshot: full
+
+  - id: 070-tables
+    action: click
+    selector: '[data-testid="owner-settings-tables"]'
+    label: Tables & QR — the door code and every table
+    expect_screen: owner-settings-tables
+    screenshot: full
+
+  - id: 080-features
+    action: click
+    selector: '[data-testid="owner-settings-features"]'
+    label: What the customer sees — each guest feature, and welcome drinks
+    expect_screen: owner-settings-features
+    screenshot: full
+
+  - id: 090-welcome-search
+    action: type
+    selector: '[data-testid="owner-welcome-search"]'
+    value: '{{MENU_SEARCH}}'
+    run_tag: false
+    label: Searching the dishes offered as welcome drinks
+    expect_screen: owner-settings-welcome-search
+    screenshot: viewport
+    optional: true
+    optional_reason: the dish list shows only while welcome drinks are switched on
+
+  - id: 100-copy
+    action: click
+    selector: '[data-testid="owner-settings-copy"]'
+    label: Words the guest sees
+    expect_screen: owner-settings-copy
+    screenshot: full
+
+  - id: 110-replies
+    action: click
+    selector: '[data-testid="owner-settings-replies"]'
+    label: Replies to suggestions — the canned replies
+    expect_screen: owner-settings-replies
+    screenshot: full
+
+  - id: 120-engage
+    action: click
+    selector: '[data-testid="owner-settings-engage"]'
+    label: Customer engagement — the review link and the photo ask
+    expect_screen: owner-settings-engage
+    screenshot: full
+
+  - id: 130-printers
+    action: click
+    selector: '[data-testid="owner-settings-printers"]'
+    label: Printers & machines — the default station and the print setup
+    expect_screen: owner-settings-printers
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-default-station"]'
+
+  - id: 140-default-station
+    action: click
+    selector: '[data-testid="owner-default-station-pick"]'
+    label: The default station picker, open (nothing chosen)
+    expect_screen: owner-default-station-picker
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="owner-default-station-pick-list"]'
+
+  - id: 150-default-station-close
+    action: press
+    selector: '[data-testid="owner-default-station-pick"]'
+    value: Escape
+    label: Close the picker without choosing
+    screenshot: false

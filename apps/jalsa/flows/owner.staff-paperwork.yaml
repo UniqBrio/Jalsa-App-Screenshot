@@ -1,0 +1,100 @@
+# One person's paperwork: the offer letter, experience certificate and
+# payslip, merged from their employment record. The three document tabs are
+# only viewed. Never pressed: Save the record, Print or save as PDF
+# (window.print), and nothing is typed into the employment fields.
+schema_version: 2
+module: owner
+flow: staff-paperwork
+title: Owner — staff paperwork
+description: A person's offer letter, experience certificate and payslip, viewed and closed.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-staff
+    action: click
+    selector: '[data-testid="owner-nav-staff"]'
+    label: Staff
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-staff"]'
+
+  # The first person's Paperwork button. While the sheet is closed, the
+  # document tabs that share this prefix are not on the page.
+  - id: 030-paperwork
+    action: click
+    selector: '[data-testid^="owner-paperwork-"]'
+    label: Paperwork — the offer letter, merged from the employment record
+    expect_screen: owner-paperwork-offer
+    screenshot: full
+    optional: true
+    optional_reason: needs a person on the team, and the staff.paperwork grant
+    assert:
+      selector_visible: '[data-testid="owner-paperwork"]'
+
+  - id: 040-experience
+    action: click
+    selector: '[data-testid="owner-paperwork-experience"]'
+    label: The experience certificate
+    expect_screen: owner-paperwork-experience
+    screenshot: full
+    optional: true
+    optional_reason: needs a person on the team, and the staff.paperwork grant
+
+  - id: 050-payslip
+    action: click
+    selector: '[data-testid="owner-paperwork-payslip"]'
+    label: The payslip
+    expect_screen: owner-paperwork-payslip
+    screenshot: full
+    optional: true
+    optional_reason: needs a person on the team, and the staff.paperwork grant
+
+  - id: 060-offer
+    action: click
+    selector: '[data-testid="owner-paperwork-offer"]'
+    label: Back to the offer letter
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.paperwork grant
+
+  - id: 070-close
+    action: click
+    selector: '[data-testid="owner-paperwork-close"]'
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.paperwork grant
+
+  - id: 080-paperwork-again
+    action: click
+    selector: '[data-testid^="owner-paperwork-"]'
+    label: Paperwork again
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.paperwork grant
+    assert:
+      selector_visible: '[data-testid="owner-paperwork"]'
+
+  - id: 090-escape
+    action: press
+    selector: '[data-testid="owner-paperwork"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs a person on the team, and the staff.paperwork grant

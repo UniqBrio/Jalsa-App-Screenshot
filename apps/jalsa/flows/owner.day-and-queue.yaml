@@ -1,0 +1,172 @@
+# Day setup (the before-service checklist) and the Waitlist.
+#
+# Never pressed: Save the note for the floor, "Menu checked", Close / Open
+# the queue, Notify, a table in the Seat sheet, and the No-show and Remove
+# confirms — all post to /api/owner/action. Nothing is typed into the note
+# or the walk-in form.
+schema_version: 2
+module: owner
+flow: day-and-queue
+title: Owner — day setup and waitlist
+description: The day's checklist and its shortcut to the menu; the waitlist with its add, seat, no-show and remove sheets opened and closed.
+scenario_class: happy
+auth: owner
+audience: a restaurant owner
+settle_ms: 800
+
+depends_on_routes:
+  - /owner
+
+steps:
+  - id: 010-console
+    action: goto
+    value: /owner
+    label: The console
+    screenshot: false
+    settle_ms: 2000
+    assert:
+      selector_visible: '[data-testid="owner-console"]'
+
+  - id: 020-day
+    action: click
+    selector: '[data-testid="owner-nav-day"]'
+    label: Day setup — the before-service checklist and the note for the floor
+    expect_screen: owner-day
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-day"]'
+
+  - id: 030-day-go-menu
+    action: click
+    selector: '[data-testid="owner-day-go-menu"]'
+    label: "\"Open menu\" from the checklist"
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-menu"]'
+
+  - id: 040-queue
+    action: click
+    selector: '[data-testid="owner-nav-queue"]'
+    label: Waitlist — who is waiting, for how long
+    expect_screen: owner-waitlist
+    screenshot: full
+    assert:
+      selector_visible: '[data-testid="owner-waitlist"]'
+
+  - id: 050-add
+    action: click
+    selector: '[data-testid="owner-queue-add"]'
+    label: Add a walk-in — the form (never saved)
+    expect_screen: owner-queue-add
+    screenshot: viewport
+    optional: true
+    optional_reason: needs the queue.walkin grant
+    assert:
+      selector_visible: '[data-testid="owner-queue-sheet"]'
+
+  - id: 060-add-cancel
+    action: click
+    selector: '[data-testid="owner-queue-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs the queue.walkin grant
+
+  - id: 070-add-again
+    action: click
+    selector: '[data-testid="owner-queue-add"]'
+    label: Add a walk-in again
+    screenshot: false
+    optional: true
+    optional_reason: needs the queue.walkin grant
+    assert:
+      selector_visible: '[data-testid="owner-queue-sheet"]'
+
+  - id: 080-add-escape
+    action: press
+    selector: '[data-testid="owner-queue-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs the queue.walkin grant
+
+  - id: 090-seat
+    action: click
+    selector: '[data-testid^="owner-queue-seat-"]'
+    label: Seat a party — the free tables (none chosen)
+    expect_screen: owner-queue-seat
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a party waiting
+    assert:
+      selector_visible: '[data-testid="owner-queue-seat-sheet"]'
+
+  - id: 100-seat-cancel
+    action: click
+    selector: '[data-testid="owner-queue-seat-cancel"]'
+    label: Cancel
+    screenshot: false
+    optional: true
+    optional_reason: needs a party waiting
+
+  - id: 110-seat-again
+    action: click
+    selector: '[data-testid^="owner-queue-seat-"]'
+    label: Seat a party again
+    screenshot: false
+    optional: true
+    optional_reason: needs a party waiting
+    assert:
+      selector_visible: '[data-testid="owner-queue-seat-sheet"]'
+
+  - id: 120-seat-escape
+    action: press
+    selector: '[data-testid="owner-queue-seat-sheet"]'
+    value: Escape
+    label: Close it with Escape
+    screenshot: false
+    optional: true
+    optional_reason: needs a party waiting
+
+  # Escape rather than "Keep": the -keep ids share their prefix with the
+  # row buttons, and coverage would credit the wrong control.
+  - id: 130-noshow
+    action: click
+    selector: '[data-testid^="owner-queue-noshow-"]'
+    label: No-show — the confirmation (not confirmed)
+    expect_screen: owner-queue-noshow
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a party that has been notified
+    assert:
+      selector_visible: '[data-testid="owner-queue-noshow"]'
+
+  - id: 140-noshow-close
+    action: press
+    selector: '[data-testid="owner-queue-noshow"]'
+    value: Escape
+    label: Keep them in the queue
+    screenshot: false
+    optional: true
+    optional_reason: needs a party that has been notified
+
+  - id: 150-remove
+    action: click
+    selector: '[data-testid^="owner-queue-remove-"]'
+    label: Remove a party — the reasons (not confirmed)
+    expect_screen: owner-queue-remove
+    screenshot: viewport
+    optional: true
+    optional_reason: needs a party waiting
+    assert:
+      selector_visible: '[data-testid="owner-queue-remove"]'
+
+  - id: 160-remove-close
+    action: press
+    selector: '[data-testid="owner-queue-remove"]'
+    value: Escape
+    label: Keep them in the queue
+    screenshot: false
+    optional: true
+    optional_reason: needs a party waiting
