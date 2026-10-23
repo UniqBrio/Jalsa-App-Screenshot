@@ -1,0 +1,184 @@
+# The ⋯ button in the guest header: "Ask for something" and the sheets it
+# opens. Read-only: every request row (water, call captain, the bill …), each
+# name in "Ask for a particular person", "Send it" and "Tell the team" post to
+# /api/guest/ask or /api/guest/bill and are never pressed. Only the sheets are
+# opened and closed. Which chips exist is the owner's choice
+# (Settings › What the customer sees), hence the optional steps.
+schema_version: 2
+module: guest
+flow: help-sheets
+title: Guest — ask for something
+description: The ⋯ sheet of requests, and the person, suggestion, hours and occasion sheets behind it; then Back to the empty order list.
+scenario_class: happy
+auth: none
+devices: [Mobile]            # a guest surface; each visit also creates a guest_session row
+audience: a guest at a table
+settle_ms: 700
+
+depends_on_routes:
+  - /t/[table]
+
+steps:
+  - id: 010-welcome
+    action: goto
+    value: /t/{{GUEST_TABLE}}
+    label: The welcome screen
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="guest-start-ordering"]'
+
+  - id: 020-menu
+    action: click
+    selector: '[data-testid="guest-start-ordering"]'
+    label: The menu
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="guest-header"]'
+
+  - id: 030-help
+    action: click
+    selector: '[data-testid="guest-more"]'
+    label: Ask for something — the requests the floor sees the moment you tap (none sent)
+    expect_screen: guest-sheet-help
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="guest-sheet-help"]'
+
+  - id: 040-person
+    action: click
+    selector: '[data-testid="guest-ask-person"]'
+    label: Ask for a particular person — who is looking after the table (nobody called)
+    expect_screen: guest-sheet-crew
+    screenshot: viewport
+    optional: true
+    optional_reason: the owner can switch "ask for a person" off
+    assert:
+      selector_visible: '[data-testid="guest-sheet-crew"]'
+
+  - id: 050-person-close
+    action: click
+    selector: '[data-testid="guest-sheet-crew-close"]'
+    label: Close
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch "ask for a person" off
+
+  - id: 060-help-again
+    action: click
+    selector: '[data-testid="guest-more"]'
+    label: Ask for something
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="guest-sheet-help"]'
+
+  - id: 070-suggest
+    action: click
+    selector: '[data-testid="guest-ask-suggest"]'
+    label: Tell us what to fix — the suggestion box (never sent)
+    expect_screen: guest-sheet-suggestion
+    screenshot: viewport
+    optional: true
+    optional_reason: the owner can switch suggestions off
+    assert:
+      selector_visible: '[data-testid="guest-sheet-suggestion"]'
+
+  - id: 080-suggest-close
+    action: click
+    selector: '[data-testid="guest-sheet-suggestion-close"]'
+    label: Close without sending
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch suggestions off
+
+  - id: 090-help-again
+    action: click
+    selector: '[data-testid="guest-more"]'
+    label: Ask for something
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="guest-sheet-help"]'
+
+  - id: 100-hours
+    action: click
+    selector: '[data-testid="guest-ask-hours"]'
+    label: Hours and holidays, from the ⋯ sheet
+    expect_screen: guest-sheet-hours
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch the hours button off
+    assert:
+      selector_visible: '[data-testid="guest-sheet-hours"]'
+
+  - id: 110-hours-close
+    action: press
+    selector: '[data-testid="guest-sheet-hours"]'
+    value: Escape
+    label: Close the hours
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch the hours button off
+
+  - id: 120-help-again
+    action: click
+    selector: '[data-testid="guest-more"]'
+    label: Ask for something
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="guest-sheet-help"]'
+
+  - id: 130-occasion
+    action: click
+    selector: '[data-testid="guest-ask-occasion"]'
+    label: Celebrating something?, from the ⋯ sheet
+    expect_screen: guest-sheet-occasion
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch the occasion question off
+    assert:
+      selector_visible: '[data-testid="guest-sheet-occasion"]'
+
+  - id: 140-occasion-close
+    action: press
+    selector: '[data-testid="guest-sheet-occasion"]'
+    value: Escape
+    label: Close without telling the team
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch the occasion question off
+
+  - id: 150-help-again
+    action: click
+    selector: '[data-testid="guest-more"]'
+    label: Ask for something
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="guest-sheet-help"]'
+
+  - id: 160-help-close
+    action: press
+    selector: '[data-testid="guest-sheet-help"]'
+    value: Escape
+    label: Close the sheet without asking for anything
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="guest-sheet-help"]'
+
+  # Back from the menu goes up to the order list; with no round sent yet it
+  # says so.
+  - id: 170-back
+    action: click
+    selector: '[data-testid="guest-back"]'
+    label: Your order — nothing ordered yet
+    expect_screen: guest-status-empty
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="guest-status-empty"]'
+
+  - id: 180-open-menu
+    action: click
+    selector: '[data-testid="guest-status-open-menu"]'
+    label: Open the menu again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="guest-menu"]'

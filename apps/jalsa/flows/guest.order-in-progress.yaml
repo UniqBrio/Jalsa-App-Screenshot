@@ -1,0 +1,182 @@
+# A table with an order already running. Every step after the visit needs
+# GUEST_TABLE to hold an OPEN bill with at least one round sent, so this flow
+# is run on its own with GUEST_TABLE pointed at a seated table (RUN-LOCAL.md);
+# on a free table every step is an expected skip.
+#
+# The visit attaches this browser's guest_session to that party's bill
+# (resolveGuest). Nothing else is written: Request payment, Continue Ordering,
+# Cancel payment request, the hearts, the upsell "+", the tip amounts and
+# "Paid" / "Failed" all post to /api/guest/* and are never pressed. "Carry on
+# to pay", "Tip", "Custom", "Pay now" and "Pay at the table" only move the
+# phone between its own screens.
+schema_version: 2
+module: guest
+flow: order-in-progress
+title: Guest — an order in progress
+description: The order list of a seated table, its running total, and — once the bill is asked for — the dessert offer, the tip step and the pay screen.
+scenario_class: happy
+auth: none
+devices: [Mobile]            # a guest surface; each visit also creates a guest_session row
+audience: a guest at a table
+settle_ms: 800
+
+depends_on_routes:
+  - /t/[table]
+
+steps:
+  - id: 010-table
+    action: goto
+    value: /t/{{GUEST_TABLE}}
+    label: The table page
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="guest-app"]'
+
+  - id: 020-status
+    action: waitFor
+    selector: '[data-testid="guest-status"]'
+    label: Your order — every round, where it has got to, and the hearts
+    expect_screen: guest-status
+    screenshot: full
+    optional: true
+    optional_reason: needs GUEST_TABLE to hold an open bill with a round sent
+
+  - id: 030-total-on
+    action: click
+    selector: '[data-testid="guest-status-total-toggle"]'
+    label: Show total — the running total, on this phone only
+    expect_screen: guest-status-total
+    screenshot: viewport
+    optional: true
+    optional_reason: needs GUEST_TABLE to hold an open bill with a round sent
+
+  - id: 040-total-off
+    action: click
+    selector: '[data-testid="guest-status-total-toggle"]'
+    label: Tick it back to how it was
+    screenshot: false
+    optional: true
+    optional_reason: needs GUEST_TABLE to hold an open bill with a round sent
+
+  # Shown once, to a phone that joined after the first round and before
+  # anyone at the table answered. Opened and closed, never answered.
+  - id: 050-heard-late
+    action: click
+    selector: '[data-testid="guest-heard-late"]'
+    label: How did you hear about us? — asked of a phone that joined late
+    expect_screen: guest-heard-late
+    screenshot: viewport
+    optional: true
+    optional_reason: only on a phone that joined after the first round, when nobody at the table has answered
+    assert:
+      selector_visible: '[data-testid="guest-heard-late-list"]'
+
+  - id: 060-heard-late-close
+    action: press
+    selector: '[data-testid="guest-heard-late"]'
+    value: Escape
+    label: Close the list without answering
+    screenshot: false
+    optional: true
+    optional_reason: only on a phone that joined after the first round, when nobody at the table has answered
+
+  - id: 070-order-more
+    action: click
+    selector: '[data-testid="guest-order-more"]'
+    label: Order more — back to the menu
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill whose payment has not been asked for
+    assert:
+      selector_visible: '[data-testid="guest-menu"]'
+
+  - id: 080-back
+    action: click
+    selector: '[data-testid="guest-back"]'
+    label: Back to the order list
+    screenshot: false
+    optional: true
+    optional_reason: needs an open bill whose payment has not been asked for
+
+  # From here the bill must already be asked for (payment_requested).
+  - id: 090-carry-on
+    action: click
+    selector: '[data-testid="guest-continue-closure"]'
+    label: Carry on to pay — something before the bill
+    expect_screen: guest-upsell
+    screenshot: full
+    optional: true
+    optional_reason: only after the table has asked for the bill
+    assert:
+      selector_visible: '[data-testid="guest-upsell-tabs"]'
+
+  - id: 100-upsell-drinks
+    action: click
+    selector: '[data-testid="guest-upsell-tab-beverages"]'
+    label: The drinks tab of the offer (nothing added)
+    expect_screen: guest-upsell-beverages
+    screenshot: viewport
+    optional: true
+    optional_reason: only after the table has asked for the bill, with the owner's upsell switched on
+
+  - id: 110-to-tip
+    action: click
+    selector: '[data-testid="guest-upsell-tip"]'
+    label: The tip step — totals and the tip choices (none chosen)
+    expect_screen: guest-tip
+    screenshot: full
+    optional: true
+    optional_reason: only after the table has asked for the bill, with the owner's upsell switched on
+    assert:
+      selector_visible: '[data-testid="guest-pay-at-table"]'
+
+  - id: 120-tip-custom
+    action: click
+    selector: '[data-testid="guest-tip-custom"]'
+    label: Custom tip — the amount box (nothing typed, nothing applied)
+    expect_screen: guest-tip-custom
+    screenshot: viewport
+    optional: true
+    optional_reason: only after the table has asked for the bill, with the owner's tip step switched on
+    assert:
+      selector_visible: '[data-testid="guest-tip-custom-panel"]'
+
+  - id: 130-pay-at-table
+    action: click
+    selector: '[data-testid="guest-pay-at-table"]'
+    label: Pay at the table — back to the order list
+    screenshot: false
+    optional: true
+    optional_reason: only after the table has asked for the bill, with the owner's tip step switched on
+    assert:
+      selector_visible: '[data-testid="guest-status"]'
+
+  - id: 140-carry-on-again
+    action: click
+    selector: '[data-testid="guest-continue-closure"]'
+    label: Carry on to pay
+    screenshot: false
+    optional: true
+    optional_reason: only after the table has asked for the bill
+
+  - id: 150-tip-again
+    action: click
+    selector: '[data-testid="guest-upsell-tip"]'
+    label: The tip step
+    screenshot: false
+    optional: true
+    optional_reason: only after the table has asked for the bill, with the owner's upsell switched on
+
+  # The last step on purpose: the pay screen's only ways on are "Paid" and
+  # "Failed", which write, so the flow ends here.
+  - id: 160-pay
+    action: click
+    selector: '[data-testid="guest-pay"]'
+    label: Pay now — the pay screen (no outcome reported)
+    expect_screen: guest-paying
+    screenshot: viewport
+    optional: true
+    optional_reason: only after the table has asked for the bill
+    assert:
+      selector_visible: '[data-testid="guest-paying"]'

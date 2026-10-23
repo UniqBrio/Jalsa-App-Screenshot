@@ -1,0 +1,88 @@
+# The welcome screen of a table with no open bill: GUEST_TABLE must be free.
+#
+# Opening the table page creates a guest_session row for this browser
+# (resolveGuest, src/lib/db/guest.ts) — unavoidable for any guest capture.
+# Nothing else is written: "How did you hear about us?" is opened and closed
+# with Escape, never chosen (choosing posts /api/guest/heard), and the
+# occasion sheet is opened and closed, never sent.
+schema_version: 2
+module: guest
+flow: welcome
+title: Guest — welcome
+description: A phone that has just scanned a free table — the greeting, the question, and the hours and occasion sheets.
+scenario_class: happy
+auth: none
+devices: [Mobile]            # a guest surface; each visit also creates a guest_session row
+audience: a guest at a table
+settle_ms: 700
+
+depends_on_routes:
+  - /t/[table]
+
+steps:
+  - id: 010-welcome
+    action: goto
+    value: /t/{{GUEST_TABLE}}
+    label: Welcome — the table, who is looking after it, and Start ordering
+    expect_screen: guest-welcome
+    screenshot: full
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="guest-welcome"]'
+
+  - id: 020-heard-open
+    action: click
+    selector: '[data-testid="guest-heard"]'
+    label: How did you hear about us? — the list of answers (nothing chosen)
+    expect_screen: guest-welcome-heard
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="guest-heard-list"]'
+
+  - id: 030-heard-close
+    action: press
+    selector: '[data-testid="guest-heard"]'
+    value: Escape
+    label: Close the list without answering
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="guest-heard-list"]'
+
+  # The two chips below are owner switches (Settings › What the customer sees).
+  - id: 040-hours
+    action: click
+    selector: '[data-testid="guest-welcome-hours"]'
+    label: Hours and holidays
+    expect_screen: guest-sheet-hours
+    screenshot: viewport
+    optional: true
+    optional_reason: the owner can switch the hours button off
+    assert:
+      selector_visible: '[data-testid="guest-sheet-hours"]'
+
+  - id: 050-hours-close
+    action: click
+    selector: '[data-testid="guest-sheet-hours-close"]'
+    label: Close the hours
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch the hours button off
+
+  - id: 060-occasion
+    action: click
+    selector: '[data-testid="guest-welcome-occasion"]'
+    label: Celebrating something? — the occasion sheet (never sent)
+    expect_screen: guest-sheet-occasion
+    screenshot: viewport
+    optional: true
+    optional_reason: the owner can switch the occasion question off
+    assert:
+      selector_visible: '[data-testid="guest-sheet-occasion"]'
+
+  - id: 070-occasion-close
+    action: click
+    selector: '[data-testid="guest-sheet-occasion-close"]'
+    label: Close without telling the team
+    screenshot: false
+    optional: true
+    optional_reason: the owner can switch the occasion question off

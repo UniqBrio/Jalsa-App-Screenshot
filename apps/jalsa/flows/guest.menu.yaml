@@ -1,0 +1,152 @@
+# The menu of a free table (GUEST_TABLE): search, the diet filter, the
+# categories sheet and one dish's sheet. Read-only: "+" on a row and "Add" in
+# the dish sheet write to the cart (/api/guest/cart) and are never pressed.
+#
+# GUEST_CATEGORY is a category slug from the seeded menu ("Biryani" ->
+# biryani). Set it in apps/jalsa/.env if the owner has renamed it.
+schema_version: 2
+module: guest
+flow: menu
+title: Guest — the menu
+description: Start ordering on a free table, then search, filter by diet and category, and read one dish.
+scenario_class: happy
+auth: none
+devices: [Mobile]            # a guest surface; each visit also creates a guest_session row
+audience: a guest at a table
+settle_ms: 700
+
+vars:
+  GUEST_CATEGORY: biryani
+  MENU_SEARCH: biryani
+
+depends_on_routes:
+  - /t/[table]
+
+steps:
+  - id: 010-welcome
+    action: goto
+    value: /t/{{GUEST_TABLE}}
+    label: The welcome screen
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="guest-start-ordering"]'
+
+  - id: 020-start-ordering
+    action: click
+    selector: '[data-testid="guest-start-ordering"]'
+    label: The menu — every dish, with the filters pinned under the header
+    expect_screen: guest-menu
+    screenshot: full
+    settle_ms: 1000
+    assert:
+      selector_visible: '[data-testid="guest-menu"]'
+
+  - id: 030-search
+    action: type
+    selector: '[data-testid="guest-menu-search"]'
+    value: '{{MENU_SEARCH}}'
+    run_tag: false
+    label: Searching the menu
+    expect_screen: guest-menu-search
+    screenshot: viewport
+
+  # A search nothing matches shows the "no matches" state and its Clear.
+  - id: 040-search-nothing
+    action: type
+    selector: '[data-testid="guest-menu-search"]'
+    value: zzqx
+    run_tag: false
+    label: A search with no match — and the way back
+    expect_screen: guest-menu-nomatch
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="guest-menu-nomatch"]'
+
+  - id: 050-search-clear
+    action: click
+    selector: '[data-testid="guest-menu-nomatch-clear"]'
+    label: Clear the search
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="guest-menu-nomatch"]'
+
+  - id: 060-diet-veg
+    action: click
+    selector: '[data-testid="guest-diet-veg"]'
+    label: Preferred menu type — Veg only
+    expect_screen: guest-menu-veg
+    screenshot: viewport
+
+  - id: 070-diet-veg-off
+    action: click
+    selector: '[data-testid="guest-diet-veg"]'
+    label: Tap again to show everything
+    screenshot: false
+
+  - id: 080-categories
+    action: click
+    selector: '[data-testid="guest-open-categories"]'
+    label: Categories — every category at once, with its count
+    expect_screen: guest-categories
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="guest-categories-sheet"]'
+
+  - id: 090-category
+    action: click
+    selector: '[data-testid="guest-cat-{{GUEST_CATEGORY}}"]'
+    label: One category chosen
+    expect_screen: guest-menu-category
+    screenshot: viewport
+    optional: true
+    optional_reason: GUEST_CATEGORY must name a category on tonight's menu
+    assert:
+      selector_visible: '[data-testid="guest-cat-clear"]'
+
+  - id: 100-category-clear
+    action: click
+    selector: '[data-testid="guest-cat-clear"]'
+    label: Show all again
+    screenshot: false
+    optional: true
+    optional_reason: GUEST_CATEGORY must name a category on tonight's menu
+
+  - id: 110-categories-again
+    action: click
+    selector: '[data-testid="guest-open-categories"]'
+    label: Open the categories again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="guest-categories-sheet"]'
+
+  - id: 120-categories-close
+    action: press
+    selector: '[data-testid="guest-categories-sheet"]'
+    value: Escape
+    label: Close the categories sheet
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="guest-categories-sheet"]'
+
+  # The first dish row: its name and price open "About this dish".
+  - id: 130-dish
+    action: click
+    selector: '[data-testid^="guest-item-"]'
+    label: About this dish — description, price and quantity (never added)
+    expect_screen: guest-sheet-item
+    screenshot: viewport
+    assert:
+      selector_visible: '[data-testid="guest-sheet-item"]'
+
+  # Escape rather than the × button: "guest-sheet-item-close" shares its
+  # prefix with the sheet's quantity stepper, and coverage would credit the
+  # stepper with a press it never had.
+  - id: 140-dish-close
+    action: press
+    selector: '[data-testid="guest-sheet-item"]'
+    value: Escape
+    label: Close the dish
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="guest-sheet-item"]'

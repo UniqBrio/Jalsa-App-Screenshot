@@ -1,0 +1,62 @@
+# Two table pages that are not a menu: a code for a table the restaurant
+# does not have, and a table that is out of service.
+#
+# Neither writes: resolveGuest returns before creating a session for an
+# unknown name and for an inactive table (src/lib/db/guest.ts). INACTIVE_TABLE
+# defaults to N10, the table the seed marks out of service; if the owner has
+# put N10 back in service, opening it WOULD create a guest_session — set
+# INACTIVE_TABLE in apps/jalsa/.env to a table that is out of service.
+# "Call the restaurant" is a tel: link and is never pressed.
+schema_version: 2
+module: guest
+flow: table-states
+title: Guest — unknown and out-of-service tables
+description: The page for a code that matches no table, with its way back, and the page for a table that is not in service.
+scenario_class: permission
+auth: none
+devices: [Mobile]            # a guest surface
+audience: a guest at a table
+settle_ms: 700
+
+vars:
+  UNKNOWN_TABLE: ZZ99
+  INACTIVE_TABLE: N10
+
+depends_on_routes:
+  - /t/[table]
+  - /
+
+steps:
+  - id: 010-unknown
+    action: goto
+    value: /t/{{UNKNOWN_TABLE}}
+    label: A code for a table this restaurant does not have
+    expect_screen: guest-unknown-table
+    screenshot: viewport
+    settle_ms: 1200
+    assert:
+      selector_visible: '[data-testid="guest-unknown-table"]'
+
+  - id: 020-back-to-start
+    action: click
+    selector: '[data-testid="guest-unknown-home-link"]'
+    label: Back to the start
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="home-guest"]'
+
+  - id: 030-inactive
+    action: goto
+    value: /t/{{INACTIVE_TABLE}}
+    label: The table page of an out-of-service table
+    screenshot: false
+    settle_ms: 1200
+
+  - id: 040-inactive-screen
+    action: waitFor
+    selector: '[data-testid="guest-table-inactive"]'
+    label: A table that is not in service — and who can help
+    expect_screen: guest-table-inactive
+    screenshot: viewport
+    optional: true
+    optional_reason: INACTIVE_TABLE must be a table the owner has taken out of service

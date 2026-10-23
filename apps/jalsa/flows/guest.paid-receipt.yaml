@@ -1,0 +1,61 @@
+# The receipt of a table that has just paid. Needs GUEST_TABLE to have
+# settled its bill within the owner's re-scan window, so this flow is run on
+# its own with GUEST_TABLE pointed at such a table (RUN-LOCAL.md); on a free
+# table every step is an expected skip.
+#
+# Read-only: "Remind the captain" and "Add a parcel" post to /api/guest/*,
+# the WhatsApp buttons are a share action, and the review link leaves the
+# app — none is pressed. "See the bill" and Back only move between screens.
+schema_version: 2
+module: guest
+flow: paid-receipt
+title: Guest — paid, and the bill
+description: The thank-you screen after a table has paid, and the itemised bill behind it.
+scenario_class: happy
+auth: none
+devices: [Mobile]            # a guest surface; each visit also creates a guest_session row
+audience: a guest at a table
+settle_ms: 800
+
+depends_on_routes:
+  - /t/[table]
+
+steps:
+  - id: 010-table
+    action: goto
+    value: /t/{{GUEST_TABLE}}
+    label: The table page
+    screenshot: false
+    settle_ms: 1500
+    assert:
+      selector_visible: '[data-testid="guest-app"]'
+
+  - id: 020-paid
+    action: waitFor
+    selector: '[data-testid="guest-paid"]'
+    label: Paid — thank you, the review prompt and the receipt
+    expect_screen: guest-paid
+    screenshot: full
+    optional: true
+    optional_reason: needs GUEST_TABLE to have paid within the re-scan window
+
+  - id: 030-see-bill
+    action: click
+    selector: '[data-testid="guest-see-bill"]'
+    label: The itemised bill
+    expect_screen: guest-invoice
+    screenshot: full
+    optional: true
+    optional_reason: needs GUEST_TABLE to have paid within the re-scan window
+    assert:
+      selector_visible: '[data-testid="guest-invoice"]'
+
+  - id: 040-back
+    action: click
+    selector: '[data-testid="guest-back"]'
+    label: Back to the thank-you screen
+    screenshot: false
+    optional: true
+    optional_reason: needs GUEST_TABLE to have paid within the re-scan window
+    assert:
+      selector_visible: '[data-testid="guest-paid"]'
