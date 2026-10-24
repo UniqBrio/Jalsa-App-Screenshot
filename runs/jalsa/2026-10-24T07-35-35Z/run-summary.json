@@ -1,0 +1,320 @@
+{
+  "run_id": "2026-10-24T07-35-35Z",
+  "app_id": "jalsa",
+  "started_at": "2026-10-24T07:35:35.580Z",
+  "finished_at": "2026-10-24T07:46:45.456Z",
+  "app_git_sha": "69b25c548bf4a57c428661c1656e030cf57e4b68",
+  "app_repo_available": true,
+  "env": {
+    "app_url": "https://jalsa-restaurant-phi.vercel.app",
+    "app_host": "jalsa-restaurant-phi.vercel.app"
+  },
+  "write_mode": "off",
+  "run_tag": "SCRSHOT_2026-10-24T07-35-35Z_",
+  "devices": [
+    "Mobile",
+    "Tablet",
+    "Laptop"
+  ],
+  "totals": {
+    "flows_total": 15,
+    "flows_run": 15,
+    "flows_skipped": 0,
+    "flows_failed": 0,
+    "flows_changed": 13,
+    "screenshots": 81
+  },
+  "flows": [
+    {
+      "module": "staff",
+      "flow": "floor-actions",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 85916
+    },
+    {
+      "module": "staff",
+      "flow": "lists",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 24942
+    },
+    {
+      "module": "staff",
+      "flow": "sign-in",
+      "device": "Mobile",
+      "status": "changed",
+      "reason": "forced (--force)",
+      "duration_ms": 12024
+    },
+    {
+      "module": "staff",
+      "flow": "table",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 62843
+    },
+    {
+      "module": "staff",
+      "flow": "tabs",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 32431
+    },
+    {
+      "module": "staff",
+      "flow": "floor-actions",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 85245
+    },
+    {
+      "module": "staff",
+      "flow": "lists",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 25089
+    },
+    {
+      "module": "staff",
+      "flow": "sign-in",
+      "device": "Tablet",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 7316
+    },
+    {
+      "module": "staff",
+      "flow": "table",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 64079
+    },
+    {
+      "module": "staff",
+      "flow": "tabs",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 31929
+    },
+    {
+      "module": "staff",
+      "flow": "floor-actions",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 85917
+    },
+    {
+      "module": "staff",
+      "flow": "lists",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 25157
+    },
+    {
+      "module": "staff",
+      "flow": "sign-in",
+      "device": "Laptop",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 8303
+    },
+    {
+      "module": "staff",
+      "flow": "table",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 64617
+    },
+    {
+      "module": "staff",
+      "flow": "tabs",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 31981
+    }
+  ],
+  "flagged": [],
+  "expected_skips": [
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "020-free",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "030-free-cancel",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "033-free-again",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "036-free-escape",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "lists",
+      "step": "030-ready-open",
+      "reason": "needs a round the kitchen has marked ready"
+    },
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "table",
+      "step": "030-waiter",
+      "reason": "only on a bill this captain owns, with the tables.assign grant"
+    },
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "table",
+      "step": "040-waiter-close",
+      "reason": "only on a bill this captain owns, with the tables.assign grant"
+    },
+    {
+      "device": "Mobile",
+      "module": "staff",
+      "flow": "tabs",
+      "step": "040-clear",
+      "reason": "a waiter's tab; a captain's handset has KOTs instead"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "020-free",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "030-free-cancel",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "033-free-again",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "036-free-escape",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "lists",
+      "step": "030-ready-open",
+      "reason": "needs a round the kitchen has marked ready"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "table",
+      "step": "030-waiter",
+      "reason": "only on a bill this captain owns, with the tables.assign grant"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "table",
+      "step": "040-waiter-close",
+      "reason": "only on a bill this captain owns, with the tables.assign grant"
+    },
+    {
+      "device": "Tablet",
+      "module": "staff",
+      "flow": "tabs",
+      "step": "040-clear",
+      "reason": "a waiter's tab; a captain's handset has KOTs instead"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "020-free",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "030-free-cancel",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "033-free-again",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "floor-actions",
+      "step": "036-free-escape",
+      "reason": "needs the tables.free grant and a table holding no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "lists",
+      "step": "030-ready-open",
+      "reason": "needs a round the kitchen has marked ready"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "table",
+      "step": "030-waiter",
+      "reason": "only on a bill this captain owns, with the tables.assign grant"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "table",
+      "step": "040-waiter-close",
+      "reason": "only on a bill this captain owns, with the tables.assign grant"
+    },
+    {
+      "device": "Laptop",
+      "module": "staff",
+      "flow": "tabs",
+      "step": "040-clear",
+      "reason": "a waiter's tab; a captain's handset has KOTs instead"
+    }
+  ]
+}

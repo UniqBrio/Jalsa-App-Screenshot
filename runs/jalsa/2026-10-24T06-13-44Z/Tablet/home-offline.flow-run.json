@@ -1,0 +1,58 @@
+{
+  "module": "home",
+  "flow": "offline",
+  "device": "Tablet",
+  "run_id": "2026-10-24T06-13-44Z",
+  "app_git_sha": "69b25c548bf4a57c428661c1656e030cf57e4b68",
+  "status": "unchanged",
+  "reason": "forced (--force)",
+  "started_at": "2026-10-24T06:37:45.539Z",
+  "duration_ms": 7263,
+  "steps": [
+    {
+      "id": "010-offline",
+      "action": "goto",
+      "phase": "steps",
+      "selector": null,
+      "input": "/offline",
+      "result": "navigated to /offline",
+      "status": "ok",
+      "next_screen": "offline",
+      "screenshot_path": "runs/jalsa/2026-10-24T06-13-44Z/Tablet/home/offline/010-offline.viewport.png",
+      "screenshot_paths": [
+        "runs/jalsa/2026-10-24T06-13-44Z/Tablet/home/offline/010-offline.viewport.png"
+      ],
+      "capture_mode": "viewport",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": "sha256:7096fcc50f0da3a8c3bac9d09c795ff5c65152d9988f693c24b012ea0a0bf4ee",
+      "fingerprint": "unchanged",
+      "duration_ms": 4252,
+      "url_after": "/offline"
+    },
+    {
+      "id": "020-try-again",
+      "action": "click",
+      "phase": "steps",
+      "selector": "[data-testid=\"offline-retry\"]",
+      "input": null,
+      "result": "clicked",
+      "status": "ok",
+      "next_screen": "home",
+      "screenshot_path": null,
+      "screenshot_paths": [],
+      "capture_mode": "none",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": null,
+      "fingerprint": null,
+      "duration_ms": 2915,
+      "target_testid": "offline-retry",
+      "url_after": "/"
+    }
+  ],
+  "screenshots": [
+    "runs/jalsa/2026-10-24T06-13-44Z/Tablet/home/offline/010-offline.viewport.png"
+  ],
+  "errors": []
+}

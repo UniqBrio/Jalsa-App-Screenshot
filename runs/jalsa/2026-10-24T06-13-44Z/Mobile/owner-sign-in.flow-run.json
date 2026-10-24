@@ -1,0 +1,78 @@
+{
+  "module": "owner",
+  "flow": "sign-in",
+  "device": "Mobile",
+  "run_id": "2026-10-24T06-13-44Z",
+  "app_git_sha": "69b25c548bf4a57c428661c1656e030cf57e4b68",
+  "status": "new",
+  "reason": "forced (--force)",
+  "started_at": "2026-10-24T06:34:45.088Z",
+  "duration_ms": 25197,
+  "steps": [
+    {
+      "id": "010-keypad",
+      "action": "goto",
+      "phase": "steps",
+      "selector": null,
+      "input": "/owner",
+      "result": "navigated to /owner",
+      "status": "ok",
+      "next_screen": "owner-signin",
+      "screenshot_path": "runs/jalsa/2026-10-24T06-13-44Z/Mobile/owner/sign-in/010-keypad.viewport.png",
+      "screenshot_paths": [
+        "runs/jalsa/2026-10-24T06-13-44Z/Mobile/owner/sign-in/010-keypad.viewport.png"
+      ],
+      "capture_mode": "viewport",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": "sha256:2770672a4a52fb797853293ead73e69ca10131e4b1e40fe8b43a73ff28230b82",
+      "fingerprint": "new",
+      "duration_ms": 19592,
+      "url_after": "/owner"
+    },
+    {
+      "id": "020-one-digit",
+      "action": "click",
+      "phase": "steps",
+      "selector": "[data-testid=\"staff-key-1\"]",
+      "input": null,
+      "result": "clicked",
+      "status": "ok",
+      "next_screen": null,
+      "screenshot_path": null,
+      "screenshot_paths": [],
+      "capture_mode": "none",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": null,
+      "fingerprint": null,
+      "duration_ms": 4803,
+      "target_testid": "staff-key-*",
+      "url_after": "/owner"
+    },
+    {
+      "id": "030-delete",
+      "action": "click",
+      "phase": "steps",
+      "selector": "[data-testid=\"staff-key-back\"]",
+      "input": null,
+      "result": "clicked",
+      "status": "ok",
+      "next_screen": null,
+      "screenshot_path": null,
+      "screenshot_paths": [],
+      "capture_mode": "none",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": null,
+      "fingerprint": null,
+      "duration_ms": 703,
+      "target_testid": "staff-key-back",
+      "url_after": "/owner"
+    }
+  ],
+  "screenshots": [
+    "runs/jalsa/2026-10-24T06-13-44Z/Mobile/owner/sign-in/010-keypad.viewport.png"
+  ],
+  "errors": []
+}

@@ -1,0 +1,99 @@
+{
+  "module": "guest",
+  "flow": "table-states",
+  "device": "Mobile",
+  "run_id": "2026-10-24T06-13-44Z",
+  "app_git_sha": "69b25c548bf4a57c428661c1656e030cf57e4b68",
+  "status": "new",
+  "reason": "forced (--force)",
+  "started_at": "2026-10-24T06:18:01.651Z",
+  "duration_ms": 9837,
+  "steps": [
+    {
+      "id": "010-unknown",
+      "action": "goto",
+      "phase": "steps",
+      "selector": null,
+      "input": "/t/ZZ99",
+      "result": "navigated to /t/ZZ99",
+      "status": "ok",
+      "next_screen": "guest-unknown-table",
+      "screenshot_path": "runs/jalsa/2026-10-24T06-13-44Z/Mobile/guest/table-states/010-unknown.viewport.png",
+      "screenshot_paths": [
+        "runs/jalsa/2026-10-24T06-13-44Z/Mobile/guest/table-states/010-unknown.viewport.png"
+      ],
+      "capture_mode": "viewport",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": "sha256:750a75ff20282b3ead757576f7125bec1ce3393c8474208c72c63deccc592519",
+      "fingerprint": "new",
+      "duration_ms": 4424,
+      "url_after": "/t/ZZ99"
+    },
+    {
+      "id": "020-back-to-start",
+      "action": "click",
+      "phase": "steps",
+      "selector": "[data-testid=\"guest-unknown-home-link\"]",
+      "input": null,
+      "result": "clicked",
+      "status": "ok",
+      "next_screen": null,
+      "screenshot_path": null,
+      "screenshot_paths": [],
+      "capture_mode": "none",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": null,
+      "fingerprint": null,
+      "duration_ms": 829,
+      "target_testid": "guest-unknown-home-link",
+      "url_after": "/"
+    },
+    {
+      "id": "030-inactive",
+      "action": "goto",
+      "phase": "steps",
+      "selector": null,
+      "input": "/t/N10",
+      "result": "navigated to /t/N10",
+      "status": "ok",
+      "next_screen": null,
+      "screenshot_path": null,
+      "screenshot_paths": [],
+      "capture_mode": "none",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": null,
+      "fingerprint": null,
+      "duration_ms": 2851,
+      "url_after": "/t/N10"
+    },
+    {
+      "id": "040-inactive-screen",
+      "action": "waitFor",
+      "phase": "steps",
+      "selector": "[data-testid=\"guest-table-inactive\"]",
+      "input": null,
+      "result": "waited for visible",
+      "status": "ok",
+      "next_screen": "guest-table-inactive",
+      "screenshot_path": "runs/jalsa/2026-10-24T06-13-44Z/Mobile/guest/table-states/040-inactive-screen.viewport.png",
+      "screenshot_paths": [
+        "runs/jalsa/2026-10-24T06-13-44Z/Mobile/guest/table-states/040-inactive-screen.viewport.png"
+      ],
+      "capture_mode": "viewport",
+      "visual_signals": null,
+      "capture_skipped_reason": null,
+      "dom_hash": "sha256:e4cfc7a4e9074654f964bde58a4eeb2a23acca3fd8a83f3d489e5749f88472c0",
+      "fingerprint": "new",
+      "duration_ms": 1662,
+      "url_after": "/t/N10"
+    }
+  ],
+  "screenshots": [
+    "runs/jalsa/2026-10-24T06-13-44Z/Mobile/guest/table-states/010-unknown.viewport.png",
+    "runs/jalsa/2026-10-24T06-13-44Z/Mobile/guest/table-states/040-inactive-screen.viewport.png"
+  ],
+  "errors": []
+}

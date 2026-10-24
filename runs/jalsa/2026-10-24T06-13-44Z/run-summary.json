@@ -1,0 +1,1267 @@
+{
+  "run_id": "2026-10-24T06-13-44Z",
+  "app_id": "jalsa",
+  "started_at": "2026-10-24T06:13:44.917Z",
+  "finished_at": "2026-10-24T07:15:05.771Z",
+  "app_git_sha": "69b25c548bf4a57c428661c1656e030cf57e4b68",
+  "app_repo_available": true,
+  "env": {
+    "app_url": "https://jalsa-restaurant-phi.vercel.app",
+    "app_host": "jalsa-restaurant-phi.vercel.app"
+  },
+  "write_mode": "off",
+  "run_tag": "SCRSHOT_2026-10-24T06-13-44Z_",
+  "devices": [
+    "Mobile",
+    "Tablet",
+    "Laptop"
+  ],
+  "totals": {
+    "flows_total": 78,
+    "flows_run": 66,
+    "flows_skipped": 4,
+    "flows_failed": 0,
+    "flows_changed": 53,
+    "screenshots": 530
+  },
+  "flows": [
+    {
+      "module": "guest",
+      "flow": "help-sheets",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 22300
+    },
+    {
+      "module": "guest",
+      "flow": "menu",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 22232
+    },
+    {
+      "module": "guest",
+      "flow": "order-in-progress",
+      "device": "Mobile",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 156963
+    },
+    {
+      "module": "guest",
+      "flow": "paid-receipt",
+      "device": "Mobile",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 54874
+    },
+    {
+      "module": "guest",
+      "flow": "table-states",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 9837
+    },
+    {
+      "module": "guest",
+      "flow": "welcome",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 12206
+    },
+    {
+      "module": "home",
+      "flow": "offline",
+      "device": "Mobile",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 5599
+    },
+    {
+      "module": "home",
+      "flow": "queue",
+      "device": "Mobile",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 22143
+    },
+    {
+      "module": "home",
+      "flow": "surfaces",
+      "device": "Mobile",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 14614
+    },
+    {
+      "module": "owner",
+      "flow": "audit-uplift",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 12175
+    },
+    {
+      "module": "owner",
+      "flow": "dashboard",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 53137
+    },
+    {
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 131266
+    },
+    {
+      "module": "owner",
+      "flow": "day-and-queue",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 158872
+    },
+    {
+      "module": "owner",
+      "flow": "ledgers",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 32262
+    },
+    {
+      "module": "owner",
+      "flow": "live-orders",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 92097
+    },
+    {
+      "module": "owner",
+      "flow": "menu",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 38286
+    },
+    {
+      "module": "owner",
+      "flow": "payments",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 116708
+    },
+    {
+      "module": "owner",
+      "flow": "print-setup",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 103260
+    },
+    {
+      "module": "owner",
+      "flow": "printers",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 68374
+    },
+    {
+      "module": "owner",
+      "flow": "reports",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 56772
+    },
+    {
+      "module": "owner",
+      "flow": "settings",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 35500
+    },
+    {
+      "module": "owner",
+      "flow": "settings-tables",
+      "device": "Mobile",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 34085
+    },
+    {
+      "module": "owner",
+      "flow": "sign-in",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 25197
+    },
+    {
+      "module": "owner",
+      "flow": "staff",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 29740
+    },
+    {
+      "module": "owner",
+      "flow": "staff-paperwork",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 19878
+    },
+    {
+      "module": "staff",
+      "flow": "sign-in",
+      "device": "Mobile",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 34010
+    },
+    {
+      "module": "home",
+      "flow": "offline",
+      "device": "Tablet",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 7263
+    },
+    {
+      "module": "home",
+      "flow": "queue",
+      "device": "Tablet",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 29143
+    },
+    {
+      "module": "home",
+      "flow": "surfaces",
+      "device": "Tablet",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 15595
+    },
+    {
+      "module": "owner",
+      "flow": "audit-uplift",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 16565
+    },
+    {
+      "module": "owner",
+      "flow": "dashboard",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 37896
+    },
+    {
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 135712
+    },
+    {
+      "module": "owner",
+      "flow": "day-and-queue",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 159281
+    },
+    {
+      "module": "owner",
+      "flow": "ledgers",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 33939
+    },
+    {
+      "module": "owner",
+      "flow": "live-orders",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 94329
+    },
+    {
+      "module": "owner",
+      "flow": "menu",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 44517
+    },
+    {
+      "module": "owner",
+      "flow": "payments",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 116961
+    },
+    {
+      "module": "owner",
+      "flow": "print-setup",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 102784
+    },
+    {
+      "module": "owner",
+      "flow": "printers",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 69635
+    },
+    {
+      "module": "owner",
+      "flow": "reports",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 58873
+    },
+    {
+      "module": "owner",
+      "flow": "settings",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 37636
+    },
+    {
+      "module": "owner",
+      "flow": "settings-tables",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 33070
+    },
+    {
+      "module": "owner",
+      "flow": "sign-in",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 5240
+    },
+    {
+      "module": "owner",
+      "flow": "staff",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 32531
+    },
+    {
+      "module": "owner",
+      "flow": "staff-paperwork",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 18936
+    },
+    {
+      "module": "staff",
+      "flow": "sign-in",
+      "device": "Tablet",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 8696
+    },
+    {
+      "module": "home",
+      "flow": "offline",
+      "device": "Laptop",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 5659
+    },
+    {
+      "module": "home",
+      "flow": "queue",
+      "device": "Laptop",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 23860
+    },
+    {
+      "module": "home",
+      "flow": "surfaces",
+      "device": "Laptop",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 16232
+    },
+    {
+      "module": "owner",
+      "flow": "audit-uplift",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 17840
+    },
+    {
+      "module": "owner",
+      "flow": "dashboard",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 38497
+    },
+    {
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "device": "Laptop",
+      "status": "changed",
+      "reason": "forced (--force)",
+      "duration_ms": 154368
+    },
+    {
+      "module": "owner",
+      "flow": "day-and-queue",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 160004
+    },
+    {
+      "module": "owner",
+      "flow": "ledgers",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 34988
+    },
+    {
+      "module": "owner",
+      "flow": "live-orders",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 95409
+    },
+    {
+      "module": "owner",
+      "flow": "menu",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 50690
+    },
+    {
+      "module": "owner",
+      "flow": "payments",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 117190
+    },
+    {
+      "module": "owner",
+      "flow": "print-setup",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 110718
+    },
+    {
+      "module": "owner",
+      "flow": "printers",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 71387
+    },
+    {
+      "module": "owner",
+      "flow": "reports",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 58582
+    },
+    {
+      "module": "owner",
+      "flow": "settings",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 39512
+    },
+    {
+      "module": "owner",
+      "flow": "settings-tables",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 33737
+    },
+    {
+      "module": "owner",
+      "flow": "sign-in",
+      "device": "Laptop",
+      "status": "unchanged",
+      "reason": "forced (--force)",
+      "duration_ms": 5483
+    },
+    {
+      "module": "owner",
+      "flow": "staff",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 32628
+    },
+    {
+      "module": "owner",
+      "flow": "staff-paperwork",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 19098
+    },
+    {
+      "module": "staff",
+      "flow": "sign-in",
+      "device": "Laptop",
+      "status": "new",
+      "reason": "forced (--force)",
+      "duration_ms": 8099
+    }
+  ],
+  "flagged": [],
+  "expected_skips": [
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "090-carry-on",
+      "reason": "only after the table has asked for the bill"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "100-upsell-drinks",
+      "reason": "only after the table has asked for the bill, with the owner's upsell switched on"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "110-to-tip",
+      "reason": "only after the table has asked for the bill, with the owner's upsell switched on"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "120-tip-custom",
+      "reason": "only after the table has asked for the bill, with the owner's tip step switched on"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "130-pay-at-table",
+      "reason": "only after the table has asked for the bill, with the owner's tip step switched on"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "140-carry-on-again",
+      "reason": "only after the table has asked for the bill"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "150-tip-again",
+      "reason": "only after the table has asked for the bill, with the owner's upsell switched on"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "order-in-progress",
+      "step": "160-pay",
+      "reason": "only after the table has asked for the bill"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "paid-receipt",
+      "step": "020-paid",
+      "reason": "needs GUEST_TABLE to have paid within the re-scan window"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "paid-receipt",
+      "step": "030-see-bill",
+      "reason": "needs GUEST_TABLE to have paid within the re-scan window"
+    },
+    {
+      "device": "Mobile",
+      "module": "guest",
+      "flow": "paid-receipt",
+      "step": "040-back",
+      "reason": "needs GUEST_TABLE to have paid within the re-scan window"
+    },
+    {
+      "device": "Mobile",
+      "module": "home",
+      "flow": "queue",
+      "step": "025-closed",
+      "reason": "only while the owner has closed the queue"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "dashboard",
+      "step": "020-connect-printer",
+      "reason": "shown only while no printing computer is connected"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "070-mark-free",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "080-mark-free-cancel",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "090-mark-free-again",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "100-mark-free-escape",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "150-reply",
+      "reason": "needs a guest suggestion that has not been answered"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "160-reply-cancel",
+      "reason": "needs a guest suggestion that has not been answered"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "090-seat",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "100-seat-cancel",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "110-seat-again",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "120-seat-escape",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "130-noshow",
+      "reason": "needs a party that has been notified"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "140-noshow-close",
+      "reason": "needs a party that has been notified"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "150-remove",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "160-remove-close",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "040-orders-empty",
+      "reason": "only when no bill is open"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "170-detach",
+      "reason": "needs a grouped bill across several tables"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "180-detach-close",
+      "reason": "needs a grouped bill across several tables"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "payments",
+      "step": "030-close",
+      "reason": "needs a bill whose guests have asked to pay"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "payments",
+      "step": "040-close-cancel",
+      "reason": "needs a bill whose guests have asked to pay"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "payments",
+      "step": "050-closed-bill",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "payments",
+      "step": "060-closed-bill-close",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "payments",
+      "step": "070-closed-bill-again",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "payments",
+      "step": "080-closed-bill-escape",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "print-setup",
+      "step": "430-elsewhere-picker",
+      "reason": "needs a ticket that has not printed, and the reprint grant"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "print-setup",
+      "step": "440-elsewhere-picker-close",
+      "reason": "needs a ticket that has not printed, and the reprint grant"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "printers",
+      "step": "030-connect-first",
+      "reason": "only before any printing computer is connected"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "printers",
+      "step": "040-connect-first-done",
+      "reason": "only before any printing computer is connected"
+    },
+    {
+      "device": "Mobile",
+      "module": "owner",
+      "flow": "reports",
+      "step": "060-menus-search",
+      "reason": "needs a bill closed in the range"
+    },
+    {
+      "device": "Tablet",
+      "module": "home",
+      "flow": "queue",
+      "step": "025-closed",
+      "reason": "only while the owner has closed the queue"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "dashboard",
+      "step": "020-connect-printer",
+      "reason": "shown only while no printing computer is connected"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "070-mark-free",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "080-mark-free-cancel",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "090-mark-free-again",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "100-mark-free-escape",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "150-reply",
+      "reason": "needs a guest suggestion that has not been answered"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "160-reply-cancel",
+      "reason": "needs a guest suggestion that has not been answered"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "090-seat",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "100-seat-cancel",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "110-seat-again",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "120-seat-escape",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "130-noshow",
+      "reason": "needs a party that has been notified"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "140-noshow-close",
+      "reason": "needs a party that has been notified"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "150-remove",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "160-remove-close",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "040-orders-empty",
+      "reason": "only when no bill is open"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "170-detach",
+      "reason": "needs a grouped bill across several tables"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "180-detach-close",
+      "reason": "needs a grouped bill across several tables"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "payments",
+      "step": "030-close",
+      "reason": "needs a bill whose guests have asked to pay"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "payments",
+      "step": "040-close-cancel",
+      "reason": "needs a bill whose guests have asked to pay"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "payments",
+      "step": "050-closed-bill",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "payments",
+      "step": "060-closed-bill-close",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "payments",
+      "step": "070-closed-bill-again",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "payments",
+      "step": "080-closed-bill-escape",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "print-setup",
+      "step": "430-elsewhere-picker",
+      "reason": "needs a ticket that has not printed, and the reprint grant"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "print-setup",
+      "step": "440-elsewhere-picker-close",
+      "reason": "needs a ticket that has not printed, and the reprint grant"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "printers",
+      "step": "030-connect-first",
+      "reason": "only before any printing computer is connected"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "printers",
+      "step": "040-connect-first-done",
+      "reason": "only before any printing computer is connected"
+    },
+    {
+      "device": "Tablet",
+      "module": "owner",
+      "flow": "reports",
+      "step": "060-menus-search",
+      "reason": "needs a bill closed in the range"
+    },
+    {
+      "device": "Laptop",
+      "module": "home",
+      "flow": "queue",
+      "step": "025-closed",
+      "reason": "only while the owner has closed the queue"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "dashboard",
+      "step": "020-connect-printer",
+      "reason": "shown only while no printing computer is connected"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "070-mark-free",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "080-mark-free-cancel",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "090-mark-free-again",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "100-mark-free-escape",
+      "reason": "needs a table holding something but no rounds"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "150-reply",
+      "reason": "needs a guest suggestion that has not been answered"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "dashboard-floor",
+      "step": "160-reply-cancel",
+      "reason": "needs a guest suggestion that has not been answered"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "090-seat",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "100-seat-cancel",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "110-seat-again",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "120-seat-escape",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "130-noshow",
+      "reason": "needs a party that has been notified"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "140-noshow-close",
+      "reason": "needs a party that has been notified"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "150-remove",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "day-and-queue",
+      "step": "160-remove-close",
+      "reason": "needs a party waiting"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "040-orders-empty",
+      "reason": "only when no bill is open"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "170-detach",
+      "reason": "needs a grouped bill across several tables"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "live-orders",
+      "step": "180-detach-close",
+      "reason": "needs a grouped bill across several tables"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "payments",
+      "step": "030-close",
+      "reason": "needs a bill whose guests have asked to pay"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "payments",
+      "step": "040-close-cancel",
+      "reason": "needs a bill whose guests have asked to pay"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "payments",
+      "step": "050-closed-bill",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "payments",
+      "step": "060-closed-bill-close",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "payments",
+      "step": "070-closed-bill-again",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "payments",
+      "step": "080-closed-bill-escape",
+      "reason": "needs a bill closed tonight"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "print-setup",
+      "step": "430-elsewhere-picker",
+      "reason": "needs a ticket that has not printed, and the reprint grant"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "print-setup",
+      "step": "440-elsewhere-picker-close",
+      "reason": "needs a ticket that has not printed, and the reprint grant"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "printers",
+      "step": "030-connect-first",
+      "reason": "only before any printing computer is connected"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "printers",
+      "step": "040-connect-first-done",
+      "reason": "only before any printing computer is connected"
+    },
+    {
+      "device": "Laptop",
+      "module": "owner",
+      "flow": "reports",
+      "step": "060-menus-search",
+      "reason": "needs a bill closed in the range"
+    }
+  ]
+}

@@ -199,6 +199,8 @@ test('no tracked file outside docs/ names a local app profile or its hosts', () 
     if (rel.startsWith('docs/') || /\.(png|zip|jpe?g)$/i.test(rel)) continue;
     // An app's own committed profile folder is exactly where its details belong.
     if (/^apps\/(?!_template\/)[^/]+\//.test(rel)) continue;
+    // So is its own capture output, where a repo's owner chooses to commit it.
+    if (/^runs\/[^/]+\//.test(rel)) continue;
     const abs = path.join(ROOT, rel);
     if (!fs.existsSync(abs)) continue;
     const text = fs.readFileSync(abs, 'utf8').toLowerCase();
