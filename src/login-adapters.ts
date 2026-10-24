@@ -244,9 +244,16 @@ function pinOnly(profile: AppProfile): LoginAdapter {
         return;
       }
 
+      // The keypad is server-rendered, so it is on screen before its handlers
+      // hydrate; taps that land before then are silently lost and nothing is
+      // ever submitted. Wait for the page's scripts, and tap at a human pace.
+      await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
       log.step(`${identity} sign-in: entering PIN…`);
       if (SEL.key) {
-        for (const d of creds.secret) await page.locator(SEL.key.split('{digit}').join(d)).first().click();
+        for (const d of creds.secret) {
+          await page.locator(SEL.key.split('{digit}').join(d)).first().click();
+          await page.waitForTimeout(120);
+        }
       } else {
         const pin = page.locator(SEL.pin).first();
         await pin.fill('');

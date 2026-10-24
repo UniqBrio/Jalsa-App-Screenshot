@@ -33,6 +33,7 @@
  *                        and screenshots/, runs/, the fingerprint baseline and
  *                        last-run state are never written or pruned
  */
+import * as fs from 'fs';
 import * as path from 'path';
 import { Browser, BrowserContext } from '@playwright/test';
 import { env, paths, profile, appHost, assertTargetEnvironment, envWarnings, isDummyIdentity } from './env';
@@ -52,6 +53,10 @@ import { EvidenceSink, evidenceDirInUse } from './manual/evidence-capture';
 import { loadPiiConfig } from './manual/pii-config';
 import { evidenceRoutes } from './manual/evidence-sanitize';
 import type { Flow, FlowRun, KnownRoutes, RunSummary } from './types';
+
+/** Extra attempts for a read-only flow that failed, and the pause before each. */
+const FLOW_RETRIES = 2;
+const RETRY_PAUSE_MS = 20_000;
 
 interface Args {
   force: boolean;
@@ -324,46 +329,61 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           }
           log.banner(`${device.id} · ${flow.module}/${flow.flow}`);
           log.info(`Reason: ${reason}`);
-          let ephemeral: BrowserContext | null = null;
-          try {
-            let context: BrowserContext | null = null;
-            if (contexts) {
-              const got = await contexts.for(flow, device);
-              context = got.context;
-              if (got.ephemeral) ephemeral = got.context;
+          // A read-only flow that fails is retried after a pause: a database that
+          // did not answer for a few seconds is not a finding, and a retry leaves
+          // the run with real screenshots instead of a `.failed.png` of an outage.
+          // The failed attempt's shots are removed so they never mix with the
+          // retry's. A write flow, or an evidence run, is never retried.
+          const retries = isWriteFlow(flow) || args.evidence || args.dryRun ? 0 : FLOW_RETRIES;
+          for (let attempt = 0; attempt <= retries; attempt++) {
+            if (attempt > 0) {
+              log.warn(`${device.id} · ${flow.module}/${flow.flow} — retry ${attempt}/${retries} in ${RETRY_PAUSE_MS / 1000}s`);
+              results.pop();
+              fs.rmSync(path.join(runDir, device.id, flow.module, flow.flow), { recursive: true, force: true });
+              await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
             }
-            const run = await executeFlow(context!, flow, {
-              runId,
-              runDir,
-              runTag,
-              // Reaching here means every write gate held (static ones above,
-              // the tenant check when the dummy context was created).
-              writeAllowed: isWriteFlow(flow) && env.writeMode === 'dummy' && isDummyIdentity(identityOf(flow)),
-              device,
-              appGitSha: repo.headSha,
-              baseline,
-              reason,
-              dryRun: args.dryRun,
-              updateBaseline: args.updateBaseline,
-              evidence: sink,
-            });
-            results.push(run);
-            const icon = run.status === 'failed' ? log.error : run.status === 'changed' ? log.warn : log.ok;
-            icon(`${device.id} · ${flow.module}/${flow.flow} → ${run.status} (${run.screenshots.length} screenshot(s), ${run.duration_ms}ms)`);
-          } catch (err) {
-            if (err instanceof DummyIdentityError) {
-              aborted = err.message;
-              log.error(err.message);
-              break outer;
+            let ephemeral: BrowserContext | null = null;
+            try {
+              let context: BrowserContext | null = null;
+              if (contexts) {
+                const got = await contexts.for(flow, device);
+                context = got.context;
+                if (got.ephemeral) ephemeral = got.context;
+              }
+              const run = await executeFlow(context!, flow, {
+                runId,
+                runDir,
+                runTag,
+                // Reaching here means every write gate held (static ones above,
+                // the tenant check when the dummy context was created).
+                writeAllowed: isWriteFlow(flow) && env.writeMode === 'dummy' && isDummyIdentity(identityOf(flow)),
+                device,
+                appGitSha: repo.headSha,
+                baseline,
+                reason,
+                dryRun: args.dryRun,
+                updateBaseline: args.updateBaseline,
+                evidence: sink,
+              });
+              results.push(run);
+              const icon = run.status === 'failed' ? log.error : run.status === 'changed' ? log.warn : log.ok;
+              icon(`${device.id} · ${flow.module}/${flow.flow} → ${run.status} (${run.screenshots.length} screenshot(s), ${run.duration_ms}ms)`);
+            } catch (err) {
+              if (err instanceof DummyIdentityError) {
+                aborted = err.message;
+                log.error(err.message);
+                break outer;
+              }
+              log.error(`${device.id} · ${flow.module}/${flow.flow} crashed: ${(err as Error).message}`);
+              results.push({
+                module: flow.module, flow: flow.flow, device: device.id, run_id: runId, app_git_sha: repo.headSha,
+                status: 'failed', reason, started_at: new Date().toISOString(), duration_ms: 0,
+                steps: [], screenshots: [], errors: [(err as Error).message],
+              });
+            } finally {
+              await ephemeral?.close().catch(() => undefined);
             }
-            log.error(`${device.id} · ${flow.module}/${flow.flow} crashed: ${(err as Error).message}`);
-            results.push({
-              module: flow.module, flow: flow.flow, device: device.id, run_id: runId, app_git_sha: repo.headSha,
-              status: 'failed', reason, started_at: new Date().toISOString(), duration_ms: 0,
-              steps: [], screenshots: [], errors: [(err as Error).message],
-            });
-          } finally {
-            await ephemeral?.close().catch(() => undefined);
+            if (results[results.length - 1]?.status !== 'failed') break;
           }
         }
       }

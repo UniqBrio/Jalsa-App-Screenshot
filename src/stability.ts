@@ -20,8 +20,27 @@ export interface StabilityResult {
 /** Selectors that mean "still working" — kept broad; extend as live patterns surface. */
 const LOADING_SELECTOR =
   '[aria-busy="true"], [role="progressbar"], [aria-label*="loading" i], ' +
-  '[data-testid*="spinner" i], [data-testid*="skeleton" i], [data-testid*="loading" i], ' +
-  '[class*="shimmer" i], [class*="skeleton" i], [class*="spinner" i]';
+  '[data-testid*="spinner" i], [data-testid*="skeleton" i], [data-testid*="loading" i]';
+
+/**
+ * Class names that mean "still working". Matched per class token, not as a
+ * substring of the whole attribute: a Tailwind colour token such as
+ * `bg-[var(--skeleton)]` names a palette entry, not a loader, and a permanent
+ * grey dot styled with it would otherwise keep every shot `.loading.png`.
+ */
+const LOADING_CLASS = 'shimmer|skeleton|spinner';
+
+/** In-page: is anything on screen still loading? Self-contained — it runs in the browser. */
+function anyLoading([sel, cls]: [string, string]): boolean {
+  if (document.querySelector(sel)) return true;
+  const re = new RegExp(cls, 'i');
+  for (const el of Array.from(document.querySelectorAll('[class]'))) {
+    for (const token of Array.from(el.classList)) {
+      if (re.test(token) && !token.includes('var(--')) return true;
+    }
+  }
+  return false;
+}
 
 export async function waitForStable(
   page: Page,
@@ -45,17 +64,17 @@ export async function waitForStable(
   let stableStreak = 0;
 
   while (Date.now() - start < timeoutMs) {
-    const probe = await page
-      .evaluate((loadingSel) => {
-        const loading = !!document.querySelector(loadingSel);
+    const loading = await page.evaluate(anyLoading, [LOADING_SELECTOR, LOADING_CLASS] as [string, string]).catch(() => false);
+    const sig = await page
+      .evaluate(() => {
         const body = document.body;
         // Cheap structural+text signature; changes when content settles in.
-        const sig = body
+        return body
           ? `${body.getElementsByTagName('*').length}:${(body.innerText || '').length}`
           : '0:0';
-        return { loading, sig };
-      }, LOADING_SELECTOR)
-      .catch(() => ({ loading: false, sig: 'evalerr' }));
+      })
+      .catch(() => 'evalerr');
+    const probe = { loading, sig };
 
     if (probe.loading) {
       stableStreak = 0;
@@ -71,7 +90,8 @@ export async function waitForStable(
 
   // One last look to report the most useful reason.
   const why = await page
-    .evaluate((loadingSel) => (document.querySelector(loadingSel) ? 'loader still present' : 'DOM still changing'), LOADING_SELECTOR)
+    .evaluate(anyLoading, [LOADING_SELECTOR, LOADING_CLASS] as [string, string])
+    .then((loading) => (loading ? 'loader still present' : 'DOM still changing'))
     .catch(() => 'unknown');
   return { stable: false, reason: `${why} after ${timeoutMs}ms` };
 }

@@ -46,7 +46,7 @@
     }
   },
   "defaultAccount": "owner",
-  "extraEnvVars": ["GUEST_TABLE"],
+  "extraEnvVars": ["GUEST_TABLE", "SEATED_TABLE"],
   "interstitials": [],
   "discovery": {
     "navSources": [

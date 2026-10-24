@@ -157,11 +157,11 @@ you to set things up:
 | Flow | Needs | How |
 |---|---|---|
 | `guest/welcome`, `guest/menu`, `guest/help-sheets` | `GUEST_TABLE` free, in service, and the queue open (a closed queue shows "not taking new orders" instead of the welcome) | the normal run |
-| `guest/order-in-progress` | `GUEST_TABLE` holding an **open bill with a round sent**; the last half needs the table to have **asked for the bill** | set `GUEST_TABLE` in `apps\jalsa\.env` to such a table, then run `npm.cmd run capture -- --app jalsa --flow guest/order-in-progress --device Mobile`, then set it back. The visit attaches this browser's guest session to that party's bill |
-| `guest/paid-receipt` | `GUEST_TABLE` **paid within the re-scan window** | the same, with a table that has just paid |
+| `guest/order-in-progress` | `SEATED_TABLE` holding an **open bill with a round sent**; the last half needs the table to have **asked for the bill** | set `SEATED_TABLE` in `apps\jalsa\.env` to such a table; the flow then runs in the normal run. The visit attaches this browser's guest session to that party's bill |
+| `guest/paid-receipt` | `GUEST_TABLE` **paid within the re-scan window** | set `GUEST_TABLE` in `apps\jalsa\.env` to a table that has just paid, run `npm.cmd run capture -- --app jalsa --flow guest/paid-receipt --device Mobile`, then set it back |
 | `staff/*` | `CAPTAIN_PIN` set; for `staff/table` the captain must own a table with an open bill | otherwise skipped (no PIN) or expected skips |
 
-`GUEST_TABLE` is read only from `apps\jalsa\.env`, not from the shell.
+`GUEST_TABLE` and `SEATED_TABLE` are read only from `apps\jalsa\.env`, not from the shell.
 
 ## 7. Where the screenshots land
 

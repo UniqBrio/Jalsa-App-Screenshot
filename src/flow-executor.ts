@@ -11,7 +11,7 @@
  */
 import * as path from 'path';
 import { BrowserContext, Page, Locator } from '@playwright/test';
-import { paths, interpolate, redactSecrets } from './env';
+import { env, paths, interpolate, redactSecrets } from './env';
 import { writeJson, relPosix } from './fsx';
 import { log } from './logger';
 import { settle, DEFAULT_SETTLE_MS } from './browser';
@@ -314,20 +314,25 @@ async function runPhase(
       result.error = described;
       result.result = 'failed';
 
-      // Always try to capture the failure state — it's the most useful
+      const optional = step.optional || phase === 'teardown';
+
+      // Capture the failure state of a real failure — it's the most useful
       // screenshot there is. Same mask as the step asked for, so content the
       // author flagged as sensitive isn't captured unmasked just because the
-      // step happened to fail.
-      result.screenshot_path = await captureFailure(page, {
-        module: flow.module,
-        flow: flow.flow,
-        stepId: step.id,
-        mask,
-        root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(opts.runDir, opts.device.id),
-      });
-      if (result.screenshot_path) result.screenshot_paths = [result.screenshot_path];
+      // step happened to fail. An optional step that skips is not a failure:
+      // its reason is in the manifest, and a `.failed.png` of a screen that
+      // simply lacks tonight's data would only pollute the screenshot set.
+      if (!optional) {
+        result.screenshot_path = await captureFailure(page, {
+          module: flow.module,
+          flow: flow.flow,
+          stepId: step.id,
+          mask,
+          root: opts.evidence ? opts.evidence.screenshotsRoot(opts.device.id) : path.join(opts.runDir, opts.device.id),
+        });
+        if (result.screenshot_path) result.screenshot_paths = [result.screenshot_path];
+      }
 
-      const optional = step.optional || phase === 'teardown';
       if (optional) {
         // A stated reason turns "something failed" into "this is known".
         result.skip_reason = step.optional_reason ?? null;
@@ -714,9 +719,10 @@ async function runAssertions(
 
   if (a.url_contains) {
     const want = interpolate(a.url_contains, vars);
-    if (!page.url().includes(want)) {
-      throw new Error(`assert url_contains "${want}" — actual URL is ${page.url()}`);
-    }
+    // A client-side route change lands after the click resolves, so wait for
+    // the URL (up to the step timeout) rather than reading it once.
+    await page.waitForURL((u) => u.href.includes(want), { waitUntil: 'commit', timeout: env.browser.stepTimeout })
+      .catch(() => { throw new Error(`assert url_contains "${want}" — actual URL is ${page.url()}`); });
   }
   if (a.selector_visible) {
     const sel = interpolate(a.selector_visible, vars);

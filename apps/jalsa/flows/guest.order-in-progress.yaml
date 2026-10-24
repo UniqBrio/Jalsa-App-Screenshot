@@ -1,6 +1,7 @@
 # A table with an order already running. Every step after the visit needs
-# GUEST_TABLE to hold an OPEN bill with at least one round sent, so this flow
-# is run on its own with GUEST_TABLE pointed at a seated table (RUN-LOCAL.md);
+# SEATED_TABLE to hold an OPEN bill with at least one round sent. It is its own
+# variable, apart from the free GUEST_TABLE, so the flow runs in the normal run
+# (RUN-LOCAL.md);
 # on a free table every step is an expected skip.
 #
 # The visit attaches this browser's guest_session to that party's bill
@@ -26,7 +27,7 @@ depends_on_routes:
 steps:
   - id: 010-table
     action: goto
-    value: /t/{{GUEST_TABLE}}
+    value: /t/{{SEATED_TABLE}}
     label: The table page
     screenshot: false
     settle_ms: 1500
@@ -40,7 +41,7 @@ steps:
     expect_screen: guest-status
     screenshot: full
     optional: true
-    optional_reason: needs GUEST_TABLE to hold an open bill with a round sent
+    optional_reason: needs SEATED_TABLE to hold an open bill with a round sent
 
   - id: 030-total-on
     action: click
@@ -49,7 +50,7 @@ steps:
     expect_screen: guest-status-total
     screenshot: viewport
     optional: true
-    optional_reason: needs GUEST_TABLE to hold an open bill with a round sent
+    optional_reason: needs SEATED_TABLE to hold an open bill with a round sent
 
   - id: 040-total-off
     action: click
@@ -57,7 +58,7 @@ steps:
     label: Tick it back to how it was
     screenshot: false
     optional: true
-    optional_reason: needs GUEST_TABLE to hold an open bill with a round sent
+    optional_reason: needs SEATED_TABLE to hold an open bill with a round sent
 
   # Shown once, to a phone that joined after the first round and before
   # anyone at the table answered. Opened and closed, never answered.

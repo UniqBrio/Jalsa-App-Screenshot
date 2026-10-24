@@ -139,6 +139,24 @@ steps:
     assert:
       selector_visible: '[data-testid="owner-table-sheet"]'
 
+  # Delete closes the edit sheet before it asks (SettingsSection.tsx), so the
+  # form is cancelled here and reopened for the delete question.
+  - id: 143-table-cancel
+    action: click
+    selector: '[data-testid="owner-table-cancel"]'
+    label: Cancel the form
+    screenshot: false
+    assert:
+      selector_hidden: '[data-testid="owner-table-sheet"]'
+
+  - id: 146-edit-table-again
+    action: click
+    selector: '[data-testid="owner-edit-table-{{GUEST_TABLE}}"]'
+    label: The same table's form again
+    screenshot: false
+    assert:
+      selector_visible: '[data-testid="owner-table-sheet"]'
+
   - id: 150-table-delete
     action: click
     selector: '[data-testid="owner-table-delete"]'
@@ -151,18 +169,10 @@ steps:
   - id: 160-table-delete-keep
     action: click
     selector: '[data-testid="owner-table-delete-confirm-keep"]'
-    label: Keep it
+    label: Keep it — the table stays, and the form is already closed
     screenshot: false
     assert:
       selector_hidden: '[data-testid="owner-table-delete-confirm"]'
-
-  - id: 170-table-cancel
-    action: click
-    selector: '[data-testid="owner-table-cancel"]'
-    label: Cancel the form
-    screenshot: false
-    assert:
-      selector_hidden: '[data-testid="owner-table-sheet"]'
 
   - id: 180-add-table
     action: click
